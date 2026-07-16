@@ -38,6 +38,25 @@
       </div>
     </section>
 
+
+    <section class="panel compare-panel">
+      <div class="section-head">
+        <div>
+          <h2>Spielervergleich</h2>
+          <span class="muted">Zwei Spieler direkt gegenüberstellen</span>
+        </div>
+        <div class="compare-controls">
+          <select id="compareA" aria-label="Erster Vergleichsspieler"></select>
+          <span class="versus">VS</span>
+          <select id="compareB" aria-label="Zweiter Vergleichsspieler"></select>
+        </div>
+      </div>
+      <div id="compareCards" class="compare-grid"></div>
+      <div class="chart-wrap compare-chart-wrap">
+        <canvas id="compareChart" width="1200" height="420"></canvas>
+      </div>
+    </section>
+
     <section>
       <div class="section-head">
         <h2>Spielerübersicht</h2>
