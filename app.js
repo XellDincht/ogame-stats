@@ -19,6 +19,39 @@ function rankings(){$("#rankings").innerHTML=rank("Größter Gesamtzuwachs","tot
 function chart(c,ps,f){const x=c.getContext("2d"),dpr=devicePixelRatio||1,w=Math.max(c.clientWidth||900,680),h=360;c.width=w*dpr;c.height=h*dpr;x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,w,h);const dates=[...new Set(ps.flatMap(p=>p.snapshots.map(s=>s.date)))].sort().slice(-Math.max(R+1,8)),vals=ps.flatMap(p=>p.snapshots.filter(s=>dates.includes(s.date)&&s[f]!=null).map(s=>s[f]));if(!vals.length){x.fillStyle="#9db2c8";x.font="14px Segoe UI";x.fillText("Noch keine ausreichenden Daten.",20,30);chartsState.set(c,[]);return}const mn=Math.min(...vals),mx=Math.max(...vals),pad=(mx-mn)*.08||1,L=70,T=25,W=w-L-20,H=h-T-48,points=[];x.strokeStyle="rgba(157,178,200,.22)";x.fillStyle="#9db2c8";x.font="12px Segoe UI";for(let i=0;i<5;i++){const y=T+H*i/4;x.beginPath();x.moveTo(L,y);x.lineTo(w-20,y);x.stroke();x.fillText(fmt(Math.round(mx+pad-(mx-mn+2*pad)*i/4)),5,y+4)}ps.forEach((p,j)=>{const mp=new Map(p.snapshots.map(s=>[s.date,s[f]]));x.strokeStyle=C[j%C.length];x.lineWidth=2.7;x.beginPath();let st=false;const linePoints=[];dates.forEach((d,i)=>{const v=mp.get(d);if(v==null)return;const px=L+W*i/Math.max(dates.length-1,1),py=T+H*(1-(v-(mn-pad))/(mx-mn+2*pad));st?x.lineTo(px,py):(x.moveTo(px,py),st=true);linePoints.push({x:px,y:py,date:d,value:v,player:p.name,color:C[j%C.length]})});x.stroke();linePoints.forEach(pt=>{x.beginPath();x.fillStyle=pt.color;x.arc(pt.x,pt.y,4.5,0,Math.PI*2);x.fill();x.lineWidth=2;x.strokeStyle="#07111f";x.stroke();points.push(pt)});x.fillStyle=C[j%C.length];x.fillText(p.name,L+8,T+16+j*17)});dates.forEach((d,i)=>{if(i%Math.max(1,Math.ceil(dates.length/6))===0){const px=L+W*i/Math.max(dates.length-1,1);x.fillStyle="#9db2c8";x.fillText(d.slice(5),px-14,h-18)}});chartsState.set(c,points);bindHover(c)}
 function bindHover(c){if(c.dataset.hoverBound)return;c.dataset.hoverBound="1";const tip=$("#chartTooltip");c.addEventListener("mousemove",e=>{const rect=c.getBoundingClientRect(),sx=c.width/(devicePixelRatio||1)/rect.width,sy=c.height/(devicePixelRatio||1)/rect.height,mx=(e.clientX-rect.left)*sx,my=(e.clientY-rect.top)*sy,pts=chartsState.get(c)||[];let best=null,dist=Infinity;for(const p of pts){const d=Math.hypot(p.x-mx,p.y-my);if(d<dist){dist=d;best=p}}if(best&&dist<=12){tip.innerHTML=`<strong>${best.player}</strong><div>${best.date}</div><div class="muted">Wert</div><div>${fmt(best.value)}</div>`;tip.hidden=false;tip.style.left=`${e.clientX}px`;tip.style.top=`${e.clientY}px`;c.style.cursor="pointer"}else{tip.hidden=true;c.style.cursor="default"}});c.addEventListener("mouseleave",()=>{tip.hidden=true;c.style.cursor="default"})}
 function charts(){const ps=selected();chart($("#totalChart"),ps,"total_points");chart($("#militaryChart"),ps,"military_points");chart($("#shipsChart"),ps,"ships");chart($("#researchChart"),ps,"research_points");chart($("#economyChart"),ps,"economy_points")}
-function render(){summary();table();cards();compare();charts();rankings()}
+
+const EXPO_LABELS={
+  resources:"Rohstoffe",ships:"Schiffe",dark_matter:"Dunkle Materie",
+  item:"Item",merchant:"Händler",pirates:"Piraten",aliens:"Aliens",
+  black_hole:"Schwarzes Loch",nothing:"Nichts",delay:"Verzögerung",other:"Sonstiges"
+};
+function expo(){
+  const root=D.expeditions||{events:[],summary:{}},s=root.summary||{},events=root.events||[];
+  const cards=[
+    ["Expeditionen",s.count||0,null],
+    ["Rohstoffe",(s.metal||0)+(s.crystal||0)+(s.deuterium||0),null],
+    ["Schiffswert",s.ships_value||0,null],
+    ["Dunkle Materie",s.dark_matter||0,null],
+    ["Eigene Verluste",s.loss_value||0,"negative"],
+    ["Zerstört",s.destroyed_value||0,"positive"],
+    ["Netto",s.net_value||0,cl(s.net_value||0)]
+  ];
+  $("#expoSummary").innerHTML=cards.map(([label,value,kind])=>`<article class="summary-card"><span class="summary-label">${label}</span><strong class="summary-value ${kind||""}">${fmt(value)}</strong></article>`).join("");
+  const cats=Object.entries(s.categories||{}).sort((a,b)=>b[1]-a[1]);
+  $("#expoCategories").innerHTML=cats.length?cats.map(([key,count])=>`<div class="expo-category"><span>${EXPO_LABELS[key]||key}</span><strong>${fmt(count)}</strong></div>`).join(""):`<span class="muted">Noch keine Expo-Daten.</span>`;
+  const shipTotals=Object.entries(s.found_ship_totals||s.ship_totals||{}).sort((a,b)=>b[1].amount-a[1].amount);
+  const lostShipTotals=Object.entries(s.lost_ship_totals||{}).sort((a,b)=>b[1].amount-a[1].amount);
+  const destroyedShipTotals=Object.entries(s.destroyed_ship_totals||{}).sort((a,b)=>b[1].amount-a[1].amount);
+  $("#expoShips").innerHTML=shipTotals.length?shipTotals.map(([name,data])=>`<div class="expo-category"><span>${name}</span><strong>${fmt(data.amount)}</strong></div>`).join(""):`<span class="muted">Noch keine Schiffe gefunden.</span>`;
+  $("#expoBody").innerHTML=events.slice(0,20).map(e=>{
+    const gain=(e.resource_total||0)+(e.ships_value||0);
+    const when=new Date(e.occurred_at).toLocaleString("de-DE");
+    const result=e.title||EXPO_LABELS[e.category]||e.category;
+    const shipList=(e.ships||[]).map(x=>`<span class="expo-ship-pill">${x.ship_name}: ${fmt(x.amount)}</span>`).join("");
+    return `<tr><td>${when}</td><td>${e.player_name||"–"}</td><td>${result}${shipList?`<span class="expo-ship-list">${shipList}</span>`:""}${e.note?`<small class="expo-note">${e.note}</small>`:""}</td><td class="${cl(gain)}">${fmt(gain)}</td><td class="${e.loss_value?"negative":"neutral"}">${fmt(e.loss_value)}</td><td class="${cl(e.net_value)}">${df(e.net_value)}</td></tr>`;
+  }).join("")||`<tr><td colspan="6" class="muted">Noch keine Expeditionen übermittelt.</td></tr>`;
+}
+
+function render(){summary();table();cards();compare();charts();expo();rankings()}
 fetch("data.json",{cache:"no-store"}).then(r=>r.json()).then(j=>{D=j;$("#title").textContent=D.meta.title;$("#subtitle").textContent=`Server ${D.meta.server} · letzter Snapshot ${D.meta.latest_date||"–"}`;$("#footer").textContent=`Erzeugt ${new Date(D.meta.generated_at).toLocaleString("de-DE")}`;D.players.forEach(p=>{$("#playerFilter").insertAdjacentHTML("beforeend",`<option value="${p.id}">${p.name}</option>`);$("#compareA").insertAdjacentHTML("beforeend",`<option value="${p.id}">${p.name}</option>`);$("#compareB").insertAdjacentHTML("beforeend",`<option value="${p.id}">${p.name}</option>`)});A=String(D.players[0]?.id||"");B=String(D.players[1]?.id||D.players[0]?.id||"");$("#compareA").value=A;$("#compareB").value=B;render()}).catch(e=>$("#subtitle").textContent=`Fehler: ${e.message}`);
 document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));b.classList.add("active");R=+b.dataset.range;render()});$("#playerFilter").onchange=e=>{F=e.target.value;render()};$("#search").oninput=()=>{table();cards()};$("#compareA").onchange=e=>{A=e.target.value;compare()};$("#compareB").onchange=e=>{B=e.target.value;compare()};window.onresize=()=>D&&(charts(),compare());
