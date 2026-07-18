@@ -588,5 +588,133 @@
     "ship_count": 1,
     "raw_text": "32m 23s 23:19:00 Ifrit [1:120:4] 1 Unendlich... [1:119:14] Friedliche Flotte | Nach Lebensformen suchen (R) Flottendetails: Schiffe: -- Unendliche Weiten Planet",
     "ships": {}
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T21:27:15.087Z",
+    "created_at": "2026-07-18T21:27:15.087Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-449568",
+    "mission": "7",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:372:7",
+    "arrival": "00:04:31",
+    "is_returning": 0,
+    "ship_count": 1,
+    "raw_text": "2 37m 17s 00:04:31 Ifrit [1:120:4] 1 [1:372:7] Eigene Flotte | Kolonisieren Flottendetails: Schiffe: Kolonieschiff: 1 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Planet Rückruf:| 19.07.2026 02:11:08",
+    "ships": {
+      "Kolonieschiff": 1,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T21:27:15.087Z",
+    "created_at": "2026-07-18T21:27:15.087Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-449569",
+    "mission": "7",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:372:7",
+    "arrival": "03:25:46",
+    "is_returning": 0,
+    "ship_count": 1,
+    "raw_text": "2 3h 58m 32s 03:25:46 Ifrit [1:120:4] 1 [1:372:7] Eigene Flotte | Kolonisieren (R) Flottendetails: Schiffe: Kolonieschiff: 1 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Planet",
+    "ships": {
+      "Kolonieschiff": 1,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T21:27:15.087Z",
+    "created_at": "2026-07-18T21:27:15.087Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-455335",
+    "mission": "8",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:110:9",
+    "arrival": "23:27:54",
+    "is_returning": 0,
+    "ship_count": 2,
+    "raw_text": "1 40s 23:27:54 Ifrit [1:120:4] 2 Trümmerfeld [1:110:9] Eigene Flotte | Abbau Flottendetails: Schiffe: Recycler: 2 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Trümmerfeld Rückruf:| 19.07.2026 01:02:09",
+    "ships": {
+      "Recycler": 2,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T21:27:15.087Z",
+    "created_at": "2026-07-18T21:27:15.087Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-455336",
+    "mission": "8",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:110:9",
+    "arrival": "01:03:33",
+    "is_returning": 0,
+    "ship_count": 2,
+    "raw_text": "1 1h 36m 19s 01:03:33 Ifrit [1:120:4] 2 Trümmerfeld [1:110:9] Eigene Flotte | Abbau (R) Flottendetails: Schiffe: Recycler: 2 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Trümmerfeld",
+    "ships": {
+      "Recycler": 2,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T21:27:15.087Z",
+    "created_at": "2026-07-18T21:27:15.087Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-457013",
+    "mission": "1",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:92:4",
+    "arrival": "23:47:15",
+    "is_returning": 0,
+    "ship_count": 58,
+    "raw_text": "20m 1s 23:47:15 Ifrit [1:120:4] 58 www [1:92:4] Eigene Flotte | Angreifen (R) Flottendetails: Schiffe: Kleiner Transporter: 42 Großer Transporter: 5 Kreuzer: 11 Ladung: Metall: 225.814 Kristall: 123.885 Deuterium: 64.219 Nahrung: 0 Planet Senator Scout",
+    "ships": {
+      "Kleiner Transporter": 42,
+      "Großer Transporter": 5,
+      "Kreuzer": 11,
+      "Metall": 225814,
+      "Kristall": 123885,
+      "Deuterium": 64219,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T21:27:15.087Z",
+    "created_at": "2026-07-18T21:27:15.087Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-457065",
+    "mission": "1",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:157:4",
+    "arrival": "23:55:05",
+    "is_returning": 0,
+    "ship_count": 1,
+    "raw_text": "27m 51s 23:55:05 Ifrit [1:120:4] 1 Heimatplanet [1:157:4] Eigene Flotte | Angreifen (R) Flottendetails: Schiffe: Großer Transporter: 1 Ladung: Metall: 15.127 Kristall: 8.010 Deuterium: 3.811 Nahrung: 0 Planet Captain Nick",
+    "ships": {
+      "Großer Transporter": 1,
+      "Metall": 15127,
+      "Kristall": 8010,
+      "Deuterium": 3811,
+      "Nahrung": 0
+    }
   }
 ]
