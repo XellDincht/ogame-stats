@@ -3,7 +3,7 @@ const $ = selector => document.querySelector(selector);
 const fmt = value => value == null ? "–" : new Intl.NumberFormat("de-DE").format(Number(value) || 0);
 const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
 
-let DATA = null;
+let DATA = { players: [] };
 let dashboardLoaded = false;
 
 function setLoginError(message = "") {
@@ -12,24 +12,50 @@ function setLoginError(message = "") {
 }
 
 function unlockShell() {
-  $("#login").hidden = true;
-  $("#app").hidden = false;
+  const login = $("#login");
+  const app = $("#app");
+  if (login) {
+    login.hidden = true;
+    login.style.display = "none";
+  }
+  if (app) {
+    app.hidden = false;
+    app.style.display = "block";
+  }
 }
 
 function showAccountView() {
-  $("#accountMain").hidden = false;
-  $("#dashboardView").hidden = true;
+  const main = $("#accountMain");
+  const dashboard = $("#dashboardView");
+  if (main) {
+    main.hidden = false;
+    main.style.display = "block";
+  }
+  if (dashboard) {
+    dashboard.hidden = true;
+    dashboard.style.display = "none";
+  }
   $("#showAccountStats")?.classList.add("active");
   $("#showDashboard")?.classList.remove("active");
 }
 
 function showDashboardView() {
-  $("#accountMain").hidden = true;
-  $("#dashboardView").hidden = false;
+  const main = $("#accountMain");
+  const dashboard = $("#dashboardView");
+  if (main) {
+    main.hidden = true;
+    main.style.display = "none";
+  }
+  if (dashboard) {
+    dashboard.hidden = false;
+    dashboard.style.display = "block";
+  }
   $("#showAccountStats")?.classList.remove("active");
   $("#showDashboard")?.classList.add("active");
-  if (!dashboardLoaded) {
-    $("#dashboardFrame").src = "account-dashboard/index.html";
+
+  const frame = $("#dashboardFrame");
+  if (frame && !dashboardLoaded) {
+    frame.src = `account-dashboard/index.html?v=${Date.now()}`;
     dashboardLoaded = true;
   }
 }
@@ -47,16 +73,17 @@ function resources(planet) {
   return `<div class="production-grid">${["metal","crystal","deuterium"].map(key => `<div class="production-item"><strong>${labels[key]}</strong><div>Bestand: ${fmt(current[key])}</div><div>1 h: ${fmt(hourly[key])}</div><div>24 h: ${fmt((hourly[key] || 0) * 24)}</div></div>`).join("")}</div>`;
 }
 
-function render() {
+function renderAccountData() {
   const players = Array.isArray(DATA?.players) ? DATA.players : [];
-  const id = $("#accountPlayer").value;
+  const select = $("#accountPlayer");
+  const id = select?.value;
   const player = players.find(item => String(item.id) === id) || players[0];
+  const main = $("#accountMain");
 
   if (!player || !player.latest) {
-    $("#accountTitle").textContent = "OGame Dashboard";
-    $("#accountSubtitle").textContent = "Keine separaten Accountstatistiken vorhanden – das Dashboard ist verfügbar.";
-    $("#accountMain").innerHTML = '<section class="panel account-card account-section"><h2>Keine Accountdaten vorhanden</h2><p>Öffne über den Reiter „Dashboard“ die aktuelle OGame-Auswertung.</p></section>';
-    showDashboardView();
+    if ($("#accountTitle")) $("#accountTitle").textContent = "OGame Dashboard";
+    if ($("#accountSubtitle")) $("#accountSubtitle").textContent = "Dashboard erfolgreich freigeschaltet.";
+    if (main) main.innerHTML = '<section class="panel account-card account-section"><h2>Keine separaten Accountdaten</h2><p>Das aktuelle OGame-Dashboard ist über den Reiter „Dashboard“ geöffnet.</p></section>';
     return;
   }
 
@@ -87,49 +114,66 @@ function render() {
   html += '</section>';
   const shipDelta = previous ? ((totals.ships || 0) - (previous.ships_total || 0)) : null;
   html += `<section class="panel account-card account-section"><h2>Entwicklung</h2><p>Flottenwachstum seit letztem Snapshot: <strong>${shipDelta == null ? "Noch kein Vergleich" : `${shipDelta >= 0 ? "+" : ""}${fmt(shipDelta)}`}</strong></p></section>`;
-  $("#accountMain").innerHTML = html;
-  $("#accountFooter").textContent = `Datendatei erzeugt ${new Date(DATA.generated_at).toLocaleString("de-DE")}`;
-  showAccountView();
+  if (main) main.innerHTML = html;
+  if ($("#accountFooter") && DATA.generated_at) $("#accountFooter").textContent = `Datendatei erzeugt ${new Date(DATA.generated_at).toLocaleString("de-DE")}`;
 }
 
-async function start() {
-  unlockShell();
-  $("#accountSubtitle").textContent = "Daten werden geladen …";
-
+async function loadAccountData() {
   try {
-    const response = await fetch(`account-data.json?v=${Date.now()}`, {cache:"no-store"});
+    const response = await fetch(`account-data.json?v=${Date.now()}`, { cache: "no-store" });
     if (!response.ok) throw new Error(`account-data.json konnte nicht geladen werden (HTTP ${response.status})`);
     DATA = await response.json();
   } catch (error) {
-    DATA = {players:[]};
-    console.error(error);
+    DATA = { players: [] };
+    console.error("Accountdaten konnten nicht geladen werden:", error);
   }
 
-  const players = Array.isArray(DATA.players) ? DATA.players : [];
-  $("#accountPlayer").innerHTML = players.length
-    ? players.map(player => `<option value="${player.id}">${esc(player.name)}</option>`).join("")
-    : '<option value="">Keine Accountdaten</option>';
-  $("#accountPlayer").disabled = players.length === 0;
-  render();
+  const players = Array.isArray(DATA?.players) ? DATA.players : [];
+  const select = $("#accountPlayer");
+  if (select) {
+    select.innerHTML = players.length
+      ? players.map(player => `<option value="${player.id}">${esc(player.name)}</option>`).join("")
+      : '<option value="">Keine Accountdaten</option>';
+    select.disabled = players.length === 0;
+  }
+  renderAccountData();
 }
 
-$("#loginForm").addEventListener("submit", event => {
-  event.preventDefault();
-  setLoginError();
-  if ($("#password").value !== TEST_PASSWORD) {
-    setLoginError("Falsches Passwort.");
-    return;
-  }
-  sessionStorage.setItem("oasAccountUnlocked", "1");
-  start();
-});
+function start() {
+  unlockShell();
+  showDashboardView();
+  if ($("#accountSubtitle")) $("#accountSubtitle").textContent = "Dashboard wird geladen …";
+  loadAccountData();
+}
 
-$("#accountPlayer").addEventListener("change", render);
-$("#showAccountStats").addEventListener("click", showAccountView);
-$("#showDashboard").addEventListener("click", showDashboardView);
-$("#logout").addEventListener("click", () => {
-  sessionStorage.removeItem("oasAccountUnlocked");
-  location.reload();
-});
+function init() {
+  $("#loginForm")?.addEventListener("submit", event => {
+    event.preventDefault();
+    setLoginError();
+    if ($("#password")?.value !== TEST_PASSWORD) {
+      setLoginError("Falsches Passwort.");
+      return;
+    }
+    sessionStorage.setItem("oasAccountUnlocked", "1");
+    start();
+  });
 
-if (sessionStorage.getItem("oasAccountUnlocked") === "1") start();
+  $("#accountPlayer")?.addEventListener("change", () => {
+    renderAccountData();
+    showAccountView();
+  });
+  $("#showAccountStats")?.addEventListener("click", showAccountView);
+  $("#showDashboard")?.addEventListener("click", showDashboardView);
+  $("#logout")?.addEventListener("click", () => {
+    sessionStorage.removeItem("oasAccountUnlocked");
+    location.reload();
+  });
+
+  if (sessionStorage.getItem("oasAccountUnlocked") === "1") start();
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init, { once: true });
+} else {
+  init();
+}
