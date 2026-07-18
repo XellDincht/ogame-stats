@@ -1,12 +1,12 @@
 {
-  "export_version": "6.0.0",
+  "export_version": "7.0.0",
   "database": "C:\\Ogame\\data\\ogame_stats.db",
   "files": {
     "summary.json": 1,
-    "snapshots.json": 2,
-    "planets.json": 6,
-    "production.json": 6,
-    "technologies.json": 290,
-    "active_flights.json": 20
+    "snapshots.json": 4,
+    "planets.json": 12,
+    "production.json": 12,
+    "technologies.json": 580,
+    "active_flights.json": 28
   }
 }

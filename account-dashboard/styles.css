@@ -288,3 +288,7 @@ footer {
 #technologyMatrix th:nth-child(even),#technologyMatrix td:nth-child(even){background-color:rgba(255,255,255,.025)}
 #technologyMatrix th:nth-child(odd):not(:first-child),#technologyMatrix td:nth-child(odd):not(:first-child){background-color:rgba(0,0,0,.12)}
 #technologyMatrix .value-zero{color:#778394} #technologyMatrix .value-normal{color:var(--text)} #technologyMatrix .value-highest{color:#75e69c;font-weight:800} #technologyMatrix .value-empty{color:var(--muted)}
+
+
+.planet-cell { display:flex; align-items:center; gap:10px; min-width:180px; }
+.planet-thumb { width:58px; height:58px; object-fit:cover; border-radius:50%; border:1px solid rgba(126,211,255,.35); box-shadow:0 4px 14px rgba(0,0,0,.35); }

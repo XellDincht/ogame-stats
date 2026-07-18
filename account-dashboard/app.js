@@ -122,7 +122,10 @@ function renderPlanets() {
 
     const row = document.createElement("tr");
     row.innerHTML = `
-      <td>${escapeHtml(planet.name)}</td>
+      <td class="planet-cell">
+        ${planet.image_url ? `<img class="planet-thumb" src="${escapeHtml(planet.image_url)}" alt="" loading="lazy">` : ""}
+        <span><strong>${escapeHtml(planet.name)}</strong></span>
+      </td>
       <td>${escapeHtml(planet.coordinates || "–")}</td>
       <td>${numberOrDash(planet.diameter_km)} km</td>
       <td class="${overviewSuspicious ? "suspect-value" : ""}"
