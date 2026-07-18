@@ -34,5 +34,14 @@
     "player_name": "XellDIncht",
     "universe": "s282-de.ogame.gameforge.com",
     "collector_version": "7.0.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T20:36:47.335Z",
+    "created_at": "2026-07-18T20:36:47.335Z",
+    "imported_at": "2026-07-18 20:36:47",
+    "player_id": "101521",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.2.0"
   }
 ]

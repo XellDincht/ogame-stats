@@ -1,13 +1,13 @@
 {
-  "export_version": "7.0.0",
+  "export_version": "7.2.0",
   "accounts": [
     {
-      "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T20:22:14.443Z",
-      "created_at": "2026-07-18T20:22:14.443Z",
+      "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T20:36:47.335Z",
+      "created_at": "2026-07-18T20:36:47.335Z",
       "player_id": "101521",
       "player_name": "XellDIncht",
       "universe": "s282-de.ogame.gameforge.com",
-      "collector_version": "7.0.0",
+      "collector_version": "7.2.0",
       "planet_count": 3,
       "production_per_hour": {
         "metal": 136696,
