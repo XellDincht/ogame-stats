@@ -162,8 +162,8 @@
     "temperature_max_c": 57
   },
   {
-    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T19:56:55.176Z",
-    "created_at": "2026-07-18T19:56:55.176Z",
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T20:22:14.443Z",
+    "created_at": "2026-07-18T20:22:14.443Z",
     "player_name": "XellDIncht",
     "universe": "s282-de.ogame.gameforge.com",
     "planet_id": 33624547,
@@ -174,14 +174,14 @@
     "image_url": "https://gf2.geo.gfsrv.net/cdn7d/be4ca77bd4d87e0945e3b55ec3b5ba.png",
     "background_image_url": "https://gf3.geo.gfsrv.net/cdn26/797e50ca0dd6763ffe34495e1468df.png",
     "diameter_km": 12800,
-    "fields_used": 111,
+    "fields_used": 112,
     "fields_total": 192,
     "temperature_min_c": 46,
     "temperature_max_c": 86
   },
   {
-    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T19:56:55.176Z",
-    "created_at": "2026-07-18T19:56:55.176Z",
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T20:22:14.443Z",
+    "created_at": "2026-07-18T20:22:14.443Z",
     "player_name": "XellDIncht",
     "universe": "s282-de.ogame.gameforge.com",
     "planet_id": 33625529,
@@ -198,8 +198,8 @@
     "temperature_max_c": 53
   },
   {
-    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T19:56:55.176Z",
-    "created_at": "2026-07-18T19:56:55.176Z",
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T20:22:14.443Z",
+    "created_at": "2026-07-18T20:22:14.443Z",
     "player_name": "XellDIncht",
     "universe": "s282-de.ogame.gameforge.com",
     "planet_id": 33626504,

@@ -3,138 +3,30 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OGame Stats Dashboard</title>
+  <title>OGame Empire Dashboard</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="page-header">
-    <div>
-      <p class="eyebrow">OGame Stats</p>
-      <h1>Account Dashboard</h1>
-    </div>
-    <div class="header-actions">
-      <label>
-        Account
-        <select id="accountSelect"></select>
-      </label>
-      <button id="reloadButton" type="button">Neu laden</button>
-    </div>
+  <header class="topbar">
+    <div><p class="eyebrow">OGame Stats · Empire Edition</p><h1 id="playerName">Account Dashboard</h1><p class="subline"><span id="universe">–</span> · Snapshot <span id="latestSnapshot">–</span></p></div>
+    <div class="controls"><label>Account <select id="accountSelect"></select></label><button id="reloadButton">Neu laden</button></div>
   </header>
-
   <main>
     <section id="message" class="message hidden"></section>
-
-    <section class="cards" aria-label="Accountübersicht">
-      <article class="card">
-        <span>Spieler</span>
-        <strong id="playerName">–</strong>
-      </article>
-      <article class="card">
-        <span>Universum</span>
-        <strong id="universe">–</strong>
-      </article>
-      <article class="card">
-        <span>Planeten</span>
-        <strong id="planetCount">–</strong>
-      </article>
-      <article class="card">
-        <span>Letzter Snapshot</span>
-        <strong id="latestSnapshot">–</strong>
-      </article>
+    <section class="summary-grid">
+      <article><span>Planeten</span><strong id="planetCount">–</strong></article>
+      <article class="metal"><span>Metall / h</span><strong id="totalMetal">–</strong></article>
+      <article class="crystal"><span>Kristall / h</span><strong id="totalCrystal">–</strong></article>
+      <article class="deut"><span>Deuterium / h</span><strong id="totalDeuterium">–</strong></article>
+      <article><span>Schiffe stationiert</span><strong id="stationedShips">–</strong></article>
+      <article><span>Schiffe unterwegs</span><strong id="travellingShips">–</strong><small id="travellingHint"></small></article>
+      <article><span>Schiffe gesamt</span><strong id="allShips">–</strong></article>
     </section>
-
-    <section class="panel">
-      <div class="panel-heading">
-        <div>
-          <p class="eyebrow">Aktueller Stand</p>
-          <h2>Planeten und Produktion</h2>
-        </div>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Planet</th>
-              <th>Koordinaten</th>
-              <th>Durchmesser</th>
-              <th>Felder</th>
-              <th>Temperatur</th>
-              <th>Metall/h</th>
-              <th>Kristall/h</th>
-              <th>Deuterium/h</th>
-            </tr>
-          </thead>
-          <tbody id="planetRows"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-heading">
-        <div>
-          <p class="eyebrow">Zeitreihe</p>
-          <h2>Gesamtproduktion pro Stunde</h2>
-        </div>
-        <label>
-          Zahlenformat
-          <select id="numberFormatSelect">
-            <option value="K" selected>K</option>
-            <option value="M">M</option>
-            <option value="E">E</option>
-          </select>
-        </label>
-      </div>
-      <div id="productionChart" class="chart" aria-label="Produktionsverlauf"></div>
-      <div class="daily-summary" aria-label="Tagesproduktion">
-        <article>
-          <span>Metall pro Tag</span>
-          <strong id="dailyMetal">–</strong>
-        </article>
-        <article>
-          <span>Kristall pro Tag</span>
-          <strong id="dailyCrystal">–</strong>
-        </article>
-        <article>
-          <span>Deuterium pro Tag</span>
-          <strong id="dailyDeuterium">–</strong>
-        </article>
-        <article>
-          <span>Gesamt pro Tag</span>
-          <strong id="dailyTotal">–</strong>
-        </article>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-heading">
-        <div>
-          <p class="eyebrow">Technologien</p>
-          <h2>Letzte bekannte Werte</h2>
-        </div>
-        <label>
-          Kategorie
-          <select id="categorySelect">
-            <option value="buildings">Gebäude</option>
-            <option value="facilities">Anlagen</option>
-            <option value="research">Forschung</option>
-            <option value="ships">Schiffe</option>
-            <option value="defenses">Verteidigung</option>
-          </select>
-        </label>
-      </div>
-      <div class="table-wrap">
-        <table id="technologyMatrix">
-          <thead id="technologyHead"></thead>
-          <tbody id="technologyRows"></tbody>
-        </table>
-      </div>
+    <section class="empire-shell">
+      <div class="empire-scroll"><table id="empireTable"><thead id="empireHead"></thead><tbody id="empireBody"></tbody></table></div>
     </section>
   </main>
-
-  <footer>
-    Datenquelle: lokale SQLite-Snapshots · statischer Export
-  </footer>
-
+  <footer>Empire-Collector · lokale SQLite-Snapshots · statischer Export</footer>
   <script src="app.js"></script>
 </body>
 </html>
