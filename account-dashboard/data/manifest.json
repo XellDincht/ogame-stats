@@ -3,10 +3,10 @@
   "database": "C:\\Ogame\\data\\ogame_stats.db",
   "files": {
     "summary.json": 1,
-    "snapshots.json": 3,
-    "planets.json": 9,
-    "production.json": 9,
-    "technologies.json": 435,
-    "active_flights.json": 32
+    "snapshots.json": 2,
+    "planets.json": 6,
+    "production.json": 6,
+    "technologies.json": 290,
+    "active_flights.json": 20
   }
 }

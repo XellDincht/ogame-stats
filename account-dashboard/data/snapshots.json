@@ -9,21 +9,12 @@
     "collector_version": "5.9.0"
   },
   {
-    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T04:52:20.685Z",
-    "created_at": "2026-07-18T04:52:20.685Z",
-    "imported_at": "2026-07-18 04:52:20",
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T06:15:32.832Z",
+    "created_at": "2026-07-18T06:15:32.832Z",
+    "imported_at": "2026-07-18 06:15:33",
     "player_id": "101521",
     "player_name": "XellDIncht",
     "universe": "s282-de.ogame.gameforge.com",
-    "collector_version": "5.9.0"
-  },
-  {
-    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T04:53:15.349Z",
-    "created_at": "2026-07-18T04:53:15.349Z",
-    "imported_at": "2026-07-18 04:53:15",
-    "player_id": "101521",
-    "player_name": "XellDIncht",
-    "universe": "s282-de.ogame.gameforge.com",
-    "collector_version": "6.1.0"
+    "collector_version": "6.2.0"
   }
 ]
