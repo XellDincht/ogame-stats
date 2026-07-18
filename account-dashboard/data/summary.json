@@ -2,8 +2,8 @@
   "export_version": "7.2.0",
   "accounts": [
     {
-      "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T20:36:47.335Z",
-      "created_at": "2026-07-18T20:36:47.335Z",
+      "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T20:46:37.974Z",
+      "created_at": "2026-07-18T20:46:37.974Z",
       "player_id": "101521",
       "player_name": "XellDIncht",
       "universe": "s282-de.ogame.gameforge.com",
@@ -12,7 +12,7 @@
       "production_per_hour": {
         "metal": 136696,
         "crystal": 56225,
-        "deuterium": 11751
+        "deuterium": 11758
       }
     }
   ]
