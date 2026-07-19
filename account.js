@@ -6,6 +6,18 @@ const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp
 let DATA = { players: [] };
 let dashboardLoaded = false;
 
+function applyDashboardHeight(height) {
+  const frame = $("#dashboardFrame");
+  const value = Math.max(420, Math.ceil(Number(height) || 0));
+  if (frame && value) frame.style.height = `${value}px`;
+}
+
+window.addEventListener("message", event => {
+  if (event.origin !== window.location.origin) return;
+  if (event.data?.type !== "ogame-dashboard-height") return;
+  applyDashboardHeight(event.data.height);
+});
+
 function setLoginError(message = "") {
   const node = $("#loginError");
   if (node) node.textContent = message;
@@ -70,7 +82,24 @@ function resources(planet) {
   const current = planet.resources || {};
   const hourly = planet.production_hour || {};
   const labels = {metal:"Metall", crystal:"Kristall", deuterium:"Deuterium"};
-  return `<div class="production-grid">${["metal","crystal","deuterium"].map(key => `<div class="production-item"><strong>${labels[key]}</strong><div>Bestand: ${fmt(current[key])}</div><div>1 h: ${fmt(hourly[key])}</div><div>24 h: ${fmt((hourly[key] || 0) * 24)}</div></div>`).join("")}</div>`;
+  const daily = Object.fromEntries(
+    ["metal", "crystal", "deuterium"].map(key => [key, (Number(hourly[key]) || 0) * 24])
+  );
+  const dailySum = daily.metal + daily.crystal + daily.deuterium;
+
+  return `<div class="production-grid">${["metal","crystal","deuterium"].map(key => `
+    <div class="production-item">
+      <strong>${labels[key]}</strong>
+      <div>Bestand: ${fmt(current[key])}</div>
+      <div>Pro Stunde: ${fmt(hourly[key])}</div>
+      <div><strong>Tagesproduktion: ${fmt(daily[key])}</strong></div>
+    </div>`).join("")}
+    <div class="production-item production-total">
+      <strong>Summe Tagesproduktion</strong>
+      <div>Metall + Kristall + Deuterium</div>
+      <div class="daily-production-total">${fmt(dailySum)}</div>
+    </div>
+  </div>`;
 }
 
 function renderAccountData() {
