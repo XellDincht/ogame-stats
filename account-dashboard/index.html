@@ -9,15 +9,16 @@
 <body>
   <header class="topbar">
     <div><p class="eyebrow">OGame Stats · Empire Edition</p><h1 id="playerName">Account Dashboard</h1><p class="subline"><span id="universe">–</span> · Snapshot <span id="latestSnapshot">–</span></p></div>
-    <div class="controls"><label>Account <select id="accountSelect"></select></label><label>Tagesstand <select id="snapshotSelect"></select></label><button id="reloadButton">Neu laden</button></div>
+    <div class="controls"><label>Account <select id="accountSelect"></select></label><label>Tagesstand <select id="snapshotSelect"></select></label><div class="period-control" aria-label="Produktionszeitraum"><span>Produktion</span><div class="period-tabs"><button type="button" data-period="1">1h</button><button type="button" data-period="24" class="active">24h</button><button type="button" data-period="168">1w</button></div></div><button id="reloadButton">Neu laden</button></div>
   </header>
   <main>
     <section id="message" class="message hidden"></section>
     <section class="summary-grid">
       <article><span>Planeten</span><strong id="planetCount">–</strong></article>
-      <article class="metal"><span>Metall / h</span><strong id="totalMetal">–</strong></article>
-      <article class="crystal"><span>Kristall / h</span><strong id="totalCrystal">–</strong></article>
-      <article class="deut"><span>Deuterium / h</span><strong id="totalDeuterium">–</strong></article>
+      <article class="metal"><span id="metalPeriodLabel">Metall / 24h</span><strong id="totalMetal">–</strong></article>
+      <article class="crystal"><span id="crystalPeriodLabel">Kristall / 24h</span><strong id="totalCrystal">–</strong></article>
+      <article class="deut"><span id="deutPeriodLabel">Deuterium / 24h</span><strong id="totalDeuterium">–</strong></article>
+      <article class="production-sum"><span id="sumPeriodLabel">∑ Produktion / 24h</span><strong id="totalProduction">–</strong></article>
       <article><span>Schiffe stationiert</span><strong id="stationedShips">–</strong></article>
       <article><span>Schiffe unterwegs</span><strong id="travellingShips">–</strong><small id="travellingHint"></small></article>
       <article><span>Schiffe gesamt</span><strong id="allShips">–</strong></article>
@@ -27,6 +28,6 @@
     </section>
   </main>
   <footer>Empire-Collector · lokale SQLite-Snapshots · statischer Export</footer>
-  <script src="app.js"></script>
+  <script src="app.js?v=7.6.2"></script>
 </body>
 </html>

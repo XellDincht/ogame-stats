@@ -12,7 +12,7 @@
 .data-table td:last-child,.data-table th:last-child{text-align:right}
 .account-section{margin:24px 0}
 .missing-data{color:#ffb86b;font-style:italic}
-.production-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.production-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .production-item{background:rgba(255,255,255,.04);padding:10px;border-radius:8px}
 
 .account-view-button{cursor:pointer;border:1px solid rgba(120,190,255,.3);background:rgba(10,30,50,.72);color:#dff6ff;border-radius:8px;padding:.6rem .85rem;font:inherit}
@@ -21,23 +21,16 @@
 .protected-dashboard iframe{display:block;width:100%;height:760px;min-height:420px;border:0;background:#07111f;overflow:hidden}
 @media(max-width:760px){.protected-dashboard iframe{min-height:420px}.account-view-button{padding:.5rem .65rem}}
 
-/* Flexible Produktionsanzeige 7.6 */
+/* Tagesproduktion 7.5 */
 .production-total {
   border-color: rgba(111, 214, 255, .42);
   background: rgba(22, 72, 102, .36);
 }
-.production-sum-value {
+.daily-production-total {
   margin-top: .35rem;
   font-size: 1.35rem;
   font-weight: 800;
   color: #9fe7ff;
 }
 
-.section-heading-row{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:14px}
-.section-heading-row h2{margin:0}
-.production-hint{margin:.35rem 0 0;color:#9db0c3;font-size:.9rem}
-.production-period-control{display:flex;align-items:center;gap:8px;white-space:nowrap;color:#bdd2e5;font-weight:700}
-.production-period-control select{border:1px solid rgba(120,190,255,.35);background:#0b2032;color:#e8f8ff;border-radius:8px;padding:.5rem .7rem;font:inherit;cursor:pointer}
-.sum-symbol{font-size:1.15em;color:#9fe7ff;margin-right:.2rem}
-@media(max-width:1050px){.production-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:620px){.production-grid{grid-template-columns:1fr}.section-heading-row{flex-direction:column}.production-period-control{width:100%;justify-content:space-between}.production-period-control select{min-width:110px}}
+.production-period{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px;color:#9fb6c8}.production-period-tabs{display:flex}.production-period-tabs button{border-radius:0;padding:7px 12px}.production-period-tabs button:first-child{border-radius:7px 0 0 7px}.production-period-tabs button:last-child{border-radius:0 7px 7px 0}.production-period-tabs button+button{margin-left:-1px}.production-period-tabs button.active{background:#5fc8f5;color:#07111f;border-color:#5fc8f5;font-weight:800}.production-grid{grid-template-columns:repeat(4,minmax(0,1fr))}@media(max-width:900px){.production-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:520px){.production-grid{grid-template-columns:1fr}.production-period{align-items:flex-start;flex-direction:column}}

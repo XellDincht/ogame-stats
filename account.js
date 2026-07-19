@@ -5,13 +5,7 @@ const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp
 
 let DATA = { players: [] };
 let dashboardLoaded = false;
-let productionPeriod = "24h";
-
-const PRODUCTION_PERIODS = {
-  "1h": { multiplier: 1, label: "1 Stunde", shortLabel: "1h" },
-  "24h": { multiplier: 24, label: "24 Stunden", shortLabel: "24h" },
-  "1w": { multiplier: 24 * 7, label: "1 Woche", shortLabel: "1w" }
-};
+let productionHours = 24;
 
 function applyDashboardHeight(height) {
   const frame = $("#dashboardFrame");
@@ -85,40 +79,16 @@ function table(obj, empty = "Noch nicht erfasst") {
   return `<table class="data-table"><tbody>${rows.map(([key,value]) => `<tr><td>${esc(key)}</td><td>${fmt(value)}</td></tr>`).join("")}</tbody></table>`;
 }
 
-function productionPeriodControl() {
-  return `<label class="production-period-control" for="productionPeriod">
-    <span>Zeitraum</span>
-    <select id="productionPeriod" aria-label="Produktionszeitraum">
-      ${Object.entries(PRODUCTION_PERIODS).map(([value, config]) =>
-        `<option value="${value}"${value === productionPeriod ? " selected" : ""}>${config.shortLabel}</option>`
-      ).join("")}
-    </select>
-  </label>`;
-}
-
 function resources(planet) {
   const current = planet.resources || {};
   const hourly = planet.production_hour || {};
   const labels = {metal:"Metall", crystal:"Kristall", deuterium:"Deuterium"};
-  const period = PRODUCTION_PERIODS[productionPeriod] || PRODUCTION_PERIODS["24h"];
-  const production = Object.fromEntries(
-    ["metal", "crystal", "deuterium"].map(key => [key, (Number(hourly[key]) || 0) * period.multiplier])
-  );
-  const productionSum = production.metal + production.crystal + production.deuterium;
-
-  return `<div class="production-grid">${["metal","crystal","deuterium"].map(key => `
-    <div class="production-item">
-      <strong>${labels[key]}</strong>
-      <div>Bestand: ${fmt(current[key])}</div>
-      <div>Pro Stunde: ${fmt(hourly[key])}</div>
-      <div><strong>Produktion (${period.shortLabel}): ${fmt(production[key])}</strong></div>
-    </div>`).join("")}
-    <div class="production-item production-total">
-      <strong><span class="sum-symbol" aria-hidden="true">∑</span> Gesamt (${period.shortLabel})</strong>
-      <div>Metall + Kristall + Deuterium</div>
-      <div class="production-sum-value">${fmt(productionSum)}</div>
-    </div>
-  </div>`;
+  const periodLabel = productionHours === 1 ? "1h" : productionHours === 24 ? "24h" : "1w";
+  const calculated = Object.fromEntries(["metal", "crystal", "deuterium"].map(key => [key, (Number(hourly[key]) || 0) * productionHours]));
+  const sum = calculated.metal + calculated.crystal + calculated.deuterium;
+  return `<div class="production-period"><span>Zeitraum</span><div class="production-period-tabs">${[[1,"1h"],[24,"24h"],[168,"1w"]].map(([hours,label]) => `<button type="button" data-account-period="${hours}" class="${productionHours === hours ? "active" : ""}">${label}</button>`).join("")}</div></div>
+  <div class="production-grid">${["metal","crystal","deuterium"].map(key => `<div class="production-item"><strong>${labels[key]}</strong><div>Bestand: ${fmt(current[key])}</div><div>Pro Stunde: ${fmt(hourly[key])}</div><div><strong>Produktion ${periodLabel}: ${fmt(calculated[key])}</strong></div></div>`).join("")}
+  <div class="production-item production-total"><strong>∑ Produktion ${periodLabel}</strong><div>Metall + Kristall + Deuterium</div><div class="daily-production-total">${fmt(sum)}</div></div></div>`;
 }
 
 function renderAccountData() {
@@ -147,7 +117,7 @@ function renderAccountData() {
     ["Planeten/Monde",planets.length],["Schiffe gesamt",totals.ships],["Verteidigung gesamt",totals.defense]
   ];
   let html = `<section class="account-grid">${cards.map(([label,value]) => `<article class="panel account-card"><span class="summary-label">${esc(label)}</span><strong class="summary-value">${typeof value === "number" ? fmt(value) : esc(value || "–")}</strong></article>`).join("")}</section>`;
-  html += `<section class="panel account-card account-section production-section"><div class="section-heading-row"><div><h2>Gesamtproduktion aller Planeten</h2><p class="production-hint">Die ∑-Karte addiert Metall, Kristall und Deuterium. Hier werden zusätzlich alle Planeten zusammengefasst.</p></div>${productionPeriodControl()}</div>${resources({resources:totals.resources,production_hour:totals.production_hour})}</section>`;
+  html += `<section class="panel account-card account-section"><h2>Gesamtproduktion aller Planeten</h2>${resources({resources:totals.resources,production_hour:totals.production_hour})}</section>`;
   html += '<section class="planet-grid">';
   for (const planet of planets) {
     html += `<article class="panel planet-card"><h2>${esc(planet.name || "Unbekannt")} <small>${esc(planet.coordinates || "")}</small></h2>
@@ -163,10 +133,10 @@ function renderAccountData() {
   const shipDelta = previous ? ((totals.ships || 0) - (previous.ships_total || 0)) : null;
   html += `<section class="panel account-card account-section"><h2>Entwicklung</h2><p>Flottenwachstum seit letztem Snapshot: <strong>${shipDelta == null ? "Noch kein Vergleich" : `${shipDelta >= 0 ? "+" : ""}${fmt(shipDelta)}`}</strong></p></section>`;
   if (main) main.innerHTML = html;
-  $("#productionPeriod")?.addEventListener("change", event => {
-    productionPeriod = event.target.value in PRODUCTION_PERIODS ? event.target.value : "24h";
+  main?.querySelectorAll("[data-account-period]").forEach(button => button.addEventListener("click", () => {
+    productionHours = Number(button.dataset.accountPeriod) || 24;
     renderAccountData();
-  });
+  }));
   if ($("#accountFooter") && DATA.generated_at) $("#accountFooter").textContent = `Datendatei erzeugt ${new Date(DATA.generated_at).toLocaleString("de-DE")}`;
 }
 

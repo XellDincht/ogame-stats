@@ -1,32 +1,162 @@
-<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#07111f"><title>OGame Allianzstatistik</title><link rel="stylesheet" href="styles.css"></head><body>
-<header class="hero"><div class="hero-inner"><p class="eyebrow">Universe Dashboard</p><h1 id="title">OGame Allianzstatistik</h1><p id="subtitle">Daten werden geladen …</p></div></header>
-<nav class="toolbar"><div class="range-tabs"><button class="tab active" data-range="1">Tag</button><button class="tab" data-range="7">Woche</button><button class="tab" data-range="30">30 Tage</button><a class="nav-link" href="player.html">Spieler-Historie</a><a class="nav-link" href="account.html">🔒 Accountdaten</a></div><div class="toolbar-actions"><input id="search" type="search" placeholder="Spieler suchen …"><select id="playerFilter"><option value="all">Alle Spieler</option></select></div></nav>
-<main>
-<section id="summary" class="summary-grid"></section>
-<section class="panel"><div class="section-head"><div><h2>Allianzübersicht</h2><p class="muted">Aktuelle Werte und Veränderungen</p></div></div><div class="table-wrap"><table><thead><tr><th>Spieler</th><th>Gesamt</th><th>Δ</th><th>Ökonomie</th><th>Δ</th><th>Forschung</th><th>Δ</th><th>Militär</th><th>Δ</th><th>Schiffe</th><th>Δ Tag</th><th>Δ Woche</th></tr></thead><tbody id="allianceBody"></tbody></table></div></section>
-<section><div class="section-head"><div><h2>Spielerkarten</h2><p class="muted">Kompakter Überblick pro Mitglied</p></div></div><div id="playerCards" class="player-grid"></div></section>
-<section class="panel"><div class="section-head"><div><h2>Spielervergleich</h2><p class="muted">Zwei Spieler direkt gegenüberstellen</p></div><div class="compare-controls"><select id="compareA"></select><span class="versus">VS</span><select id="compareB"></select></div></div><div id="compareCards" class="compare-grid"></div><div class="chart-wrap"><canvas id="compareChart"></canvas></div></section>
-<section class="charts-grid"><article class="panel"><div class="section-head"><h2>Punkteverlauf</h2></div><div class="chart-wrap"><canvas id="totalChart"></canvas></div></article><article class="panel"><div class="section-head"><h2>Militärpunkte</h2></div><div class="chart-wrap"><canvas id="militaryChart"></canvas></div></article><article class="panel"><div class="section-head"><h2>Schiffsanzahl</h2></div><div class="chart-wrap"><canvas id="shipsChart"></canvas></div></article><article class="panel"><div class="section-head"><h2>Forschung</h2></div><div class="chart-wrap"><canvas id="researchChart"></canvas></div></article><article class="panel"><div class="section-head"><h2>Wirtschaft</h2></div><div class="chart-wrap"><canvas id="economyChart"></canvas></div></article></section>
-<section class="panel">
-<div class="section-head"><div><h2>Expeditionen</h2><p class="muted">Manuell übermittelte Funde und Verluste</p></div></div>
-<div id="expoSummary" class="summary-grid expo-summary"></div>
-<div class="expo-layout">
-  <div>
-    <h3>Fundarten</h3>
-    <div id="expoCategories" class="expo-categories"></div>
-  </div>
-  <div>
-    <h3>Gefundene Schiffe</h3>
-    <div id="expoShips" class="expo-categories"></div>
-    <h3 class="expo-recent-title">Letzte Expeditionen</h3>
-    <div class="table-wrap">
-      <table class="expo-table">
-        <thead><tr><th>Zeit</th><th>Spieler</th><th>Ergebnis</th><th>Gewinn</th><th>Verlust</th><th>Netto</th></tr></thead>
-        <tbody id="expoBody"></tbody>
-      </table>
+<!doctype html>
+<html lang="de">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
+  <title>OGame Allianzstatistik</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <p class="eyebrow">Universe Dashboard</p>
+      <h1 id="title">OGame Allianzstatistik</h1>
+      <p id="subtitle">Daten werden geladen …</p>
     </div>
-  </div>
-</div>
-</section>
-<section><div class="section-head"><div><h2>Toplisten</h2><p class="muted">Beste Entwicklung im gewählten Zeitraum</p></div></div><div id="rankings" class="ranking-grid"></div></section>
-</main><footer id="footer">Wird geladen …</footer><script src="app.js"></script></body></html>
+  </header>
+  <nav class="toolbar">
+    <div class="range-tabs"><button class="tab active" data-range="1">Tag</button><button class="tab"
+        data-range="7">Woche</button><button class="tab" data-range="30">30 Tage</button><a class="nav-link"
+        href="player.html">Spieler-Historie</a><a class="nav-link" href="account.html">🔒 Accountdaten</a></div>
+    <div class="toolbar-actions"><input id="search" type="search" placeholder="Spieler suchen …"><select
+        id="playerFilter">
+        <option value="all">Alle Spieler</option>
+      </select></div>
+  </nav>
+  <main>
+    <section id="summary" class="summary-grid"></section>
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <h2>Allianzübersicht</h2>
+          <p class="muted">Aktuelle Werte und Veränderungen</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Spieler</th>
+              <th>Gesamt</th>
+              <th>Δ</th>
+              <th>Ökonomie</th>
+              <th>Δ</th>
+              <th>Forschung</th>
+              <th>Δ</th>
+              <th>Militär</th>
+              <th>Δ</th>
+              <th>Schiffe</th>
+              <th>Δ Tag</th>
+              <th>Δ Woche</th>
+            </tr>
+          </thead>
+          <tbody id="allianceBody"></tbody>
+        </table>
+      </div>
+    </section>
+    <section>
+      <div class="section-head">
+        <div>
+          <h2>Spielerkarten</h2>
+          <p class="muted">Kompakter Überblick pro Mitglied</p>
+        </div>
+      </div>
+      <div id="playerCards" class="player-grid"></div>
+    </section>
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <h2>Spielervergleich</h2>
+          <p class="muted">Zwei Spieler direkt gegenüberstellen</p>
+        </div>
+        <div class="compare-controls"><select id="compareA"></select><span class="versus">VS</span><select
+            id="compareB"></select></div>
+      </div>
+      <div id="compareCards" class="compare-grid"></div>
+      <div class="chart-wrap"><canvas id="compareChart"></canvas></div>
+    </section>
+    <section class="charts-grid">
+      <article class="panel">
+        <div class="section-head">
+          <h2>Punkteverlauf</h2>
+        </div>
+        <div class="chart-wrap"><canvas id="totalChart"></canvas></div>
+      </article>
+      <article class="panel">
+        <div class="section-head">
+          <h2>Militärpunkte</h2>
+        </div>
+        <div class="chart-wrap"><canvas id="militaryChart"></canvas></div>
+      </article>
+      <article class="panel">
+        <div class="section-head">
+          <h2>Schiffsanzahl</h2>
+        </div>
+        <div class="chart-wrap"><canvas id="shipsChart"></canvas></div>
+      </article>
+      <article class="panel">
+        <div class="section-head">
+          <h2>Forschung</h2>
+        </div>
+        <div class="chart-wrap"><canvas id="researchChart"></canvas></div>
+      </article>
+      <article class="panel">
+        <div class="section-head">
+          <h2>Wirtschaft</h2>
+        </div>
+        <div class="chart-wrap"><canvas id="economyChart"></canvas></div>
+      </article>
+    </section>
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <h2>Expeditionen</h2>
+          <p class="muted">Manuell übermittelte Funde und Verluste</p>
+        </div>
+      </div>
+      <div id="expoSummary" class="summary-grid expo-summary"></div>
+      <div class="expo-layout">
+        <div>
+          <h3>Fundarten</h3>
+          <div id="expoCategories" class="expo-categories"></div>
+        </div>
+        <div>
+          <h3>Gefundene Schiffe</h3>
+          <div id="expoShips" class="expo-categories"></div>
+          <h3 class="expo-recent-title">Letzte Expeditionen</h3>
+          <div class="table-wrap">
+            <table class="expo-table">
+              <thead>
+                <tr>
+                  <th>Zeit</th>
+                  <th>Spieler</th>
+                  <th>Ergebnis</th>
+                  <th>Gewinn</th>
+                  <th>Verlust</th>
+                  <th>Netto</th>
+                </tr>
+              </thead>
+              <tbody id="expoBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section>
+      <div class="section-head">
+        <div>
+          <h2>Toplisten</h2>
+          <p class="muted">Beste Entwicklung im gewählten Zeitraum</p>
+        </div>
+      </div>
+      <div id="rankings" class="ranking-grid"></div>
+    </section>
+  </main>
+  <footer id="footer">Wird geladen …</footer>
+  <script src="app.js"></script>
+</body>
+
+</html>
