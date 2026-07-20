@@ -758,5 +758,131 @@
       "Deuterium": 0,
       "Nahrung": 0
     }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-20T04:18:30.591Z",
+    "created_at": "2026-07-20T04:18:30.591Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-581981",
+    "mission": "3",
+    "origin_coordinates": "1:120:9",
+    "destination_coordinates": "1:120:4",
+    "arrival": "06:33:06",
+    "is_returning": 0,
+    "ship_count": 10,
+    "raw_text": "2 14m 36s 06:33:06 Shiva [1:120:9] 10 Ifrit [1:120:4] Eigene Flotte | Transport Flottendetails: Schiffe: Großer Transporter: 10 Ladung: Metall: 245.247 Kristall: 88.394 Deuterium: 7.805 Nahrung: 0 Planet Rückruf:| 20.07.2026 06:19:03",
+    "ships": {
+      "Großer Transporter": 10,
+      "Metall": 245247,
+      "Kristall": 88394,
+      "Deuterium": 7805,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-20T04:18:30.591Z",
+    "created_at": "2026-07-20T04:18:30.591Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-581982",
+    "mission": "3",
+    "origin_coordinates": "1:120:9",
+    "destination_coordinates": "1:120:4",
+    "arrival": "06:53:55",
+    "is_returning": 0,
+    "ship_count": 10,
+    "raw_text": "2 35m 25s 06:53:55 Shiva [1:120:9] 10 Ifrit [1:120:4] Eigene Flotte | Transport (R) Flottendetails: Schiffe: Großer Transporter: 10 Ladung: Metall: 245.247 Kristall: 88.394 Deuterium: 7.805 Nahrung: 0 Planet",
+    "ships": {
+      "Großer Transporter": 10,
+      "Metall": 245247,
+      "Kristall": 88394,
+      "Deuterium": 7805,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-20T04:18:30.591Z",
+    "created_at": "2026-07-20T04:18:30.591Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-582090",
+    "mission": "7",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:120:8",
+    "arrival": "06:54:13",
+    "is_returning": 0,
+    "ship_count": 1,
+    "raw_text": "3 35m 43s 06:54:13 Ifrit [1:120:4] 1 [1:120:8] Eigene Flotte | Kolonisieren Flottendetails: Schiffe: Kolonieschiff: 1 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Planet Rückruf:| 20.07.2026 06:16:52",
+    "ships": {
+      "Kolonieschiff": 1,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-20T04:18:30.591Z",
+    "created_at": "2026-07-20T04:18:30.591Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-582091",
+    "mission": "7",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:120:8",
+    "arrival": "07:33:58",
+    "is_returning": 0,
+    "ship_count": 1,
+    "raw_text": "3 1h 15m 28s 07:33:58 Ifrit [1:120:4] 1 [1:120:8] Eigene Flotte | Kolonisieren (R) Flottendetails: Schiffe: Kolonieschiff: 1 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Planet",
+    "ships": {
+      "Kolonieschiff": 1,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-20T04:18:30.591Z",
+    "created_at": "2026-07-20T04:18:30.591Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-582142",
+    "mission": "6",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:155:4",
+    "arrival": "06:16:02",
+    "is_returning": 0,
+    "ship_count": 3,
+    "raw_text": "1 fertig 06:16:02 Ifrit [1:120:4] 3 Yvaga-LV13 [1:155:4] Eigene Flotte | Spionage Flottendetails: Schiffe: Spionagesonde: 3 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Planet Rückruf:| 20.07.2026 06:15:56 Spionage Weyland-Yutani-Corp",
+    "ships": {
+      "Spionagesonde": 3,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-20T04:18:30.591Z",
+    "created_at": "2026-07-20T04:18:30.591Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-582143",
+    "mission": "6",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:155:4",
+    "arrival": "06:16:40",
+    "is_returning": 0,
+    "ship_count": 3,
+    "raw_text": "1 fertig 06:16:40 Ifrit [1:120:4] 3 Yvaga-LV13 [1:155:4] Eigene Flotte | Spionage (R) Flottendetails: Schiffe: Spionagesonde: 3 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Planet Weyland-Yutani-Corp",
+    "ships": {
+      "Spionagesonde": 3,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
   }
 ]
