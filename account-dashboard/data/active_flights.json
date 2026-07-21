@@ -884,5 +884,341 @@
       "Deuterium": 0,
       "Nahrung": 0
     }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-21T04:18:53.677Z",
+    "created_at": "2026-07-21T04:18:53.677Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-688925",
+    "mission": "7",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:116:7",
+    "arrival": "07:22:07",
+    "is_returning": 0,
+    "ship_count": 1,
+    "raw_text": "7 1h 3m 16s 07:22:07 Ifrit [1:120:4] 1 [1:116:7] Eigene Flotte | Kolonisieren Flottendetails: Schiffe: Kolonieschiff: 1 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Planet Rückruf:| 21.07.2026 06:24:14",
+    "ships": {
+      "Kolonieschiff": 1,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-21T04:18:53.677Z",
+    "created_at": "2026-07-21T04:18:53.677Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-688926",
+    "mission": "7",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:116:7",
+    "arrival": "08:31:04",
+    "is_returning": 0,
+    "ship_count": 1,
+    "raw_text": "7 2h 12m 13s 08:31:04 Ifrit [1:120:4] 1 [1:116:7] Eigene Flotte | Kolonisieren (R) Flottendetails: Schiffe: Kolonieschiff: 1 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Planet",
+    "ships": {
+      "Kolonieschiff": 1,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-21T04:18:53.677Z",
+    "created_at": "2026-07-21T04:18:53.677Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-689001",
+    "mission": "7",
+    "origin_coordinates": "1:120:8",
+    "destination_coordinates": "1:376:7",
+    "arrival": "09:34:51",
+    "is_returning": 0,
+    "ship_count": 1,
+    "raw_text": "8 3h 16m 09:34:51 Shiva [1:120:8] 1 [1:376:7] Eigene Flotte | Kolonisieren Flottendetails: Schiffe: Kolonieschiff: 1 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Planet Rückruf:| 21.07.2026 06:21:53",
+    "ships": {
+      "Kolonieschiff": 1,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-21T04:18:53.677Z",
+    "created_at": "2026-07-21T04:18:53.677Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-689002",
+    "mission": "7",
+    "origin_coordinates": "1:120:8",
+    "destination_coordinates": "1:376:7",
+    "arrival": "12:54:11",
+    "is_returning": 0,
+    "ship_count": 1,
+    "raw_text": "8 6h 35m 20s 12:54:11 Shiva [1:120:8] 1 [1:376:7] Eigene Flotte | Kolonisieren (R) Flottendetails: Schiffe: Kolonieschiff: 1 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Planet",
+    "ships": {
+      "Kolonieschiff": 1,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-21T04:18:53.677Z",
+    "created_at": "2026-07-21T04:18:53.677Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-689070",
+    "mission": "6",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:118:10",
+    "arrival": "06:18:45",
+    "is_returning": 0,
+    "ship_count": 3,
+    "raw_text": "1 fertig 06:18:45 Ifrit [1:120:4] 3 Heimatplanet [1:118:10] Eigene Flotte | Spionage Flottendetails: Schiffe: Spionagesonde: 3 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Planet Rückruf:| 21.07.2026 06:19:07 Spionage Traumprinz",
+    "ships": {
+      "Spionagesonde": 3,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-21T04:18:53.677Z",
+    "created_at": "2026-07-21T04:18:53.677Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-689071",
+    "mission": "6",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:118:10",
+    "arrival": "06:19:13",
+    "is_returning": 0,
+    "ship_count": 3,
+    "raw_text": "1 22s 06:19:13 Ifrit [1:120:4] 3 Heimatplanet [1:118:10] Eigene Flotte | Spionage (R) Flottendetails: Schiffe: Spionagesonde: 3 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Planet Traumprinz",
+    "ships": {
+      "Spionagesonde": 3,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-21T04:18:53.677Z",
+    "created_at": "2026-07-21T04:18:53.677Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-689072",
+    "mission": "6",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:51:8",
+    "arrival": "06:19:07",
+    "is_returning": 0,
+    "ship_count": 3,
+    "raw_text": "3 16s 06:19:07 Ifrit [1:120:4] 3 Home [1:51:8] Eigene Flotte | Spionage Flottendetails: Schiffe: Spionagesonde: 3 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Planet Rückruf:| 21.07.2026 06:19:03 Spionage Proconsul Tauri",
+    "ships": {
+      "Spionagesonde": 3,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-21T04:18:53.677Z",
+    "created_at": "2026-07-21T04:18:53.677Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-689073",
+    "mission": "6",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:51:8",
+    "arrival": "06:19:53",
+    "is_returning": 0,
+    "ship_count": 3,
+    "raw_text": "3 1m 2s 06:19:53 Ifrit [1:120:4] 3 Home [1:51:8] Eigene Flotte | Spionage (R) Flottendetails: Schiffe: Spionagesonde: 3 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Planet Proconsul Tauri",
+    "ships": {
+      "Spionagesonde": 3,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-21T04:18:53.677Z",
+    "created_at": "2026-07-21T04:18:53.677Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-689074",
+    "mission": "6",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:33:8",
+    "arrival": "06:19:13",
+    "is_returning": 0,
+    "ship_count": 3,
+    "raw_text": "4 22s 06:19:13 Ifrit [1:120:4] 3 PeacefulM... [1:33:8] Eigene Flotte | Spionage Flottendetails: Schiffe: Spionagesonde: 3 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 PeacefulMiner Planet Rückruf:| 21.07.2026 06:19:00 Spionage Geologist Xenor",
+    "ships": {
+      "Spionagesonde": 3,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-21T04:18:53.677Z",
+    "created_at": "2026-07-21T04:18:53.677Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-689075",
+    "mission": "6",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:33:8",
+    "arrival": "06:20:02",
+    "is_returning": 0,
+    "ship_count": 3,
+    "raw_text": "4 1m 11s 06:20:02 Ifrit [1:120:4] 3 PeacefulM... [1:33:8] Eigene Flotte | Spionage (R) Flottendetails: Schiffe: Spionagesonde: 3 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 PeacefulMiner Planet Geologist Xenor",
+    "ships": {
+      "Spionagesonde": 3,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-21T04:18:53.677Z",
+    "created_at": "2026-07-21T04:18:53.677Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-689076",
+    "mission": "6",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:98:8",
+    "arrival": "06:19:02",
+    "is_returning": 0,
+    "ship_count": 3,
+    "raw_text": "2 11s 06:19:02 Ifrit [1:120:4] 3 Heimatplanet [1:98:8] Eigene Flotte | Spionage Flottendetails: Schiffe: Spionagesonde: 3 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Planet Rückruf:| 21.07.2026 06:18:56 Spionage Consul Europa",
+    "ships": {
+      "Spionagesonde": 3,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-21T04:18:53.677Z",
+    "created_at": "2026-07-21T04:18:53.677Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-689077",
+    "mission": "6",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:98:8",
+    "arrival": "06:19:36",
+    "is_returning": 0,
+    "ship_count": 3,
+    "raw_text": "2 45s 06:19:36 Ifrit [1:120:4] 3 Heimatplanet [1:98:8] Eigene Flotte | Spionage (R) Flottendetails: Schiffe: Spionagesonde: 3 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Planet Consul Europa",
+    "ships": {
+      "Spionagesonde": 3,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-21T04:18:53.677Z",
+    "created_at": "2026-07-21T04:18:53.677Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-689078",
+    "mission": "6",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:186:4",
+    "arrival": "06:19:16",
+    "is_returning": 0,
+    "ship_count": 3,
+    "raw_text": "5 25s 06:19:16 Ifrit [1:120:4] 3 Heimatplanet [1:186:4] Eigene Flotte | Spionage Flottendetails: Schiffe: Spionagesonde: 3 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Planet Rückruf:| 21.07.2026 06:18:53 Spionage Hoelkmen McFly",
+    "ships": {
+      "Spionagesonde": 3,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-21T04:18:53.677Z",
+    "created_at": "2026-07-21T04:18:53.677Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-689079",
+    "mission": "6",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:186:4",
+    "arrival": "06:20:01",
+    "is_returning": 0,
+    "ship_count": 3,
+    "raw_text": "5 1m 10s 06:20:01 Ifrit [1:120:4] 3 Heimatplanet [1:186:4] Eigene Flotte | Spionage (R) Flottendetails: Schiffe: Spionagesonde: 3 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Planet Hoelkmen McFly",
+    "ships": {
+      "Spionagesonde": 3,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-21T04:18:53.677Z",
+    "created_at": "2026-07-21T04:18:53.677Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-689080",
+    "mission": "6",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:60:10",
+    "arrival": "06:19:18",
+    "is_returning": 0,
+    "ship_count": 3,
+    "raw_text": "6 27s 06:19:18 Ifrit [1:120:4] 3 Neuer Pla... [1:60:10] Eigene Flotte | Spionage Flottendetails: Schiffe: Spionagesonde: 3 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Neuer Planetenname Planet Rückruf:| 21.07.2026 06:18:50 Spionage Captain Oberon",
+    "ships": {
+      "Spionagesonde": 3,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-21T04:18:53.677Z",
+    "created_at": "2026-07-21T04:18:53.677Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-689081",
+    "mission": "6",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:60:10",
+    "arrival": "06:20:02",
+    "is_returning": 0,
+    "ship_count": 3,
+    "raw_text": "6 1m 11s 06:20:02 Ifrit [1:120:4] 3 Neuer Pla... [1:60:10] Eigene Flotte | Spionage (R) Flottendetails: Schiffe: Spionagesonde: 3 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Neuer Planetenname Planet Captain Oberon",
+    "ships": {
+      "Spionagesonde": 3,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
   }
 ]
