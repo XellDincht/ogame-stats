@@ -11,10 +11,11 @@
 
 <body>
   <header class="hero">
-    <div class="hero-inner">
-      <p class="eyebrow">Universe Dashboard</p>
+    <div class="hero-inner alliance-hero">
+      <img id="allianceLogo" class="alliance-logo" src="ally/Ally_main.png" alt="Allianzlogo">
+      <div><p class="eyebrow">Universe Dashboard</p>
       <h1 id="title">OGame Allianzstatistik</h1>
-      <p id="subtitle">Daten werden geladen …</p>
+      <p id="subtitle">Daten werden geladen …</p></div>
     </div>
   </header>
   <nav class="toolbar">
@@ -27,12 +28,13 @@
       </select></div>
   </nav>
   <main>
-    <section id="summary" class="summary-grid"></section>
+    <section class="panel alliance-panel"><div class="section-head"><div><h2>Echte Allianzstatistik</h2><p class="muted">Offizielle Allianzwerte aus dem Allianz-Highscore</p></div></div><section id="allianceSummary" class="summary-grid"></section><div class="chart-wrap"><canvas id="allianceChart"></canvas></div></section>
+    <section id="summary" class="summary-grid member-summary"></section>
     <section class="panel">
       <div class="section-head">
         <div>
-          <h2>Allianzübersicht</h2>
-          <p class="muted">Aktuelle Werte und Veränderungen</p>
+          <h2>Mitgliederübersicht</h2>
+          <p class="muted">Aktuelle Werte und Veränderungen der Allianzmitglieder</p>
         </div>
       </div>
       <div class="table-wrap">
