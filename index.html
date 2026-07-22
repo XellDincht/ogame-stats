@@ -20,15 +20,15 @@
   </header>
   <nav class="toolbar">
     <div class="range-tabs"><button class="tab active" data-range="1">Tag</button><button class="tab"
-        data-range="7">Woche</button><button class="tab" data-range="30">30 Tage</button><a class="nav-link"
-        href="player.html">Spieler-Historie</a><a class="nav-link" href="account.html">🔒 Accountdaten</a></div>
+        data-range="7">Woche</button><button class="tab" data-range="30">30 Tage</button><a class="nav-link" href="player.html">Spieler-Historie</a><a class="nav-link" href="hall-of-fame.html">Hall of Fame</a><a id="accountLink" class="nav-link" href="account.html" hidden>🔒 Accountdaten</a></div>
     <div class="toolbar-actions"><input id="search" type="search" placeholder="Spieler suchen …"><select
         id="playerFilter">
         <option value="all">Alle Spieler</option>
       </select></div>
   </nav>
   <main>
-    <section class="panel alliance-panel"><div class="section-head"><div><h2>Echte Allianzstatistik</h2><p class="muted">Offizielle Allianzwerte aus dem Allianz-Highscore</p></div></div><section id="allianceSummary" class="summary-grid alliance-summary-grid"></section><div class="chart-wrap"><canvas id="allianceChart"></canvas></div></section>
+    <section class="panel alliance-panel"><div class="section-head"><div><h2>Echte Allianzstatistik</h2><p class="muted">Offizielle Allianzwerte aus dem Allianz-Highscore</p></div></div><section id="allianceSummary" class="summary-grid"></section><div class="chart-wrap"><canvas id="allianceChart"></canvas></div></section>
+    <section id="summary" class="summary-grid member-summary"></section>
     <section class="panel">
       <div class="section-head">
         <div>

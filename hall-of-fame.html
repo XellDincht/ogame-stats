@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#07111f">
+  <title>Hall of Fame · OGame Allianz</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="hero"><div class="hero-inner"><div><p class="eyebrow">Allianzarchiv</p><h1>Hall of Fame</h1><p id="subtitle">Aktive und ehemalige Mitglieder</p></div></div></header>
+  <nav class="toolbar"><div class="range-tabs"><a class="nav-link" href="index.html">← Dashboard</a><a class="nav-link" href="player.html">Spieler-Historie</a></div><div class="toolbar-actions"><input id="hofSearch" type="search" placeholder="Mitglied suchen …"></div></nav>
+  <main>
+    <section id="hofSummary" class="summary-grid"></section>
+    <section class="panel"><div class="section-head"><div><h2>Aktive Mitglieder</h2><p class="muted">Derzeit in der Allianz</p></div></div><div id="activeMembers" class="hof-grid"></div></section>
+    <section class="panel"><div class="section-head"><div><h2>Ehemalige Mitglieder</h2><p class="muted">Historie und Statistiken bleiben vollständig erhalten</p></div></div><div id="formerMembers" class="hof-grid"></div></section>
+  </main>
+  <footer id="footer">Wird geladen …</footer>
+  <script src="hall-of-fame.js"></script>
+</body>
+</html>

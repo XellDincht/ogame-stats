@@ -23,10 +23,4 @@
 
 .alliance-hero{display:flex;align-items:center;gap:24px}.alliance-logo{width:112px;height:112px;object-fit:contain;border-radius:18px;border:1px solid var(--border);background:rgba(7,17,31,.55);padding:8px;box-shadow:var(--shadow)}.alliance-panel{margin-top:0}.member-summary{margin-top:24px}.alliance-empty{padding:18px;color:var(--muted);border:1px dashed var(--border);border-radius:14px}.rank-value{display:flex;align-items:baseline;gap:8px}.rank-change{font-size:.85rem}@media(max-width:650px){.alliance-hero{align-items:flex-start}.alliance-logo{width:78px;height:78px}}
 
-/* Kompakte offizielle Allianzstatistik */
-.alliance-summary-grid{grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px}
-.alliance-summary-grid .summary-card{padding:12px 14px;min-height:92px}
-.alliance-summary-grid .summary-label{font-size:.76rem}
-.alliance-summary-grid .summary-value{margin-top:5px;font-size:clamp(1.05rem,1.8vw,1.45rem)}
-.alliance-summary-grid .summary-delta{margin-top:4px;font-size:.82rem}
-.alliance-panel .chart-wrap{margin-top:12px}
+.hof-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px}.hof-card .metric-row strong{font-size:.95rem}.member-status{display:inline-flex;padding:3px 9px;border-radius:999px;font-size:.75rem;font-weight:700}.member-status.active{background:rgba(103,232,165,.14);color:#67e8a5}.member-status.former{background:rgba(157,178,200,.14);color:#b8c7d9}
