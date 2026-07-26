@@ -3130,5 +3130,89 @@
       "Deuterium": 1358855,
       "Nahrung": 0
     }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-26T05:04:39.836Z",
+    "created_at": "2026-07-26T05:04:39.836Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-1262528",
+    "mission": "3",
+    "origin_coordinates": "1:116:9",
+    "destination_coordinates": "1:120:8",
+    "arrival": "07:35:17",
+    "is_returning": 0,
+    "ship_count": 30,
+    "raw_text": "1 30m 40s 07:35:17 Ramuh [1:116:9] 30 Shiva [1:120:8] Eigene Flotte | Transport Flottendetails: Schiffe: Großer Transporter: 30 Ladung: Metall: 907.641 Kristall: 333.006 Deuterium: 15.003 Nahrung: 0 Planet Rückruf:| 26.07.2026 07:03:37",
+    "ships": {
+      "Großer Transporter": 30,
+      "Metall": 907641,
+      "Kristall": 333006,
+      "Deuterium": 15003,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-26T05:04:39.836Z",
+    "created_at": "2026-07-26T05:04:39.836Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-1262529",
+    "mission": "3",
+    "origin_coordinates": "1:116:9",
+    "destination_coordinates": "1:120:8",
+    "arrival": "08:08:17",
+    "is_returning": 0,
+    "ship_count": 30,
+    "raw_text": "1 1h 3m 40s 08:08:17 Ramuh [1:116:9] 30 Shiva [1:120:8] Eigene Flotte | Transport (R) Flottendetails: Schiffe: Großer Transporter: 30 Ladung: Metall: 907.641 Kristall: 333.006 Deuterium: 15.003 Nahrung: 0 Planet",
+    "ships": {
+      "Großer Transporter": 30,
+      "Metall": 907641,
+      "Kristall": 333006,
+      "Deuterium": 15003,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-26T05:07:13.112Z",
+    "created_at": "2026-07-26T05:07:13.112Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-1262528",
+    "mission": "3",
+    "origin_coordinates": "1:116:9",
+    "destination_coordinates": "1:120:8",
+    "arrival": "07:35:17",
+    "is_returning": 0,
+    "ship_count": 30,
+    "raw_text": "1 28m 6s 07:35:17 Ramuh [1:116:9] 30 Shiva [1:120:8] Eigene Flotte | Transport Flottendetails: Schiffe: Großer Transporter: 30 Ladung: Metall: 907.641 Kristall: 333.006 Deuterium: 15.003 Nahrung: 0 Planet Rückruf:| 26.07.2026 07:03:37",
+    "ships": {
+      "Großer Transporter": 30,
+      "Metall": 907641,
+      "Kristall": 333006,
+      "Deuterium": 15003,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-26T05:07:13.112Z",
+    "created_at": "2026-07-26T05:07:13.112Z",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-1262529",
+    "mission": "3",
+    "origin_coordinates": "1:116:9",
+    "destination_coordinates": "1:120:8",
+    "arrival": "08:08:17",
+    "is_returning": 0,
+    "ship_count": 30,
+    "raw_text": "1 1h 1m 6s 08:08:17 Ramuh [1:116:9] 30 Shiva [1:120:8] Eigene Flotte | Transport (R) Flottendetails: Schiffe: Großer Transporter: 30 Ladung: Metall: 907.641 Kristall: 333.006 Deuterium: 15.003 Nahrung: 0 Planet",
+    "ships": {
+      "Großer Transporter": 30,
+      "Metall": 907641,
+      "Kristall": 333006,
+      "Deuterium": 15003,
+      "Nahrung": 0
+    }
   }
 ]
