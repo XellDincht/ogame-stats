@@ -3214,5 +3214,26 @@
       "Deuterium": 15003,
       "Nahrung": 0
     }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-28T04:09:12.995Z",
+    "created_at": "2026-07-28T04:09:12.995Z",
+    "player_name": "gustlberger",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-1490983",
+    "mission": "4",
+    "origin_coordinates": "1:120:8",
+    "destination_coordinates": "1:120:4",
+    "arrival": "06:27:07",
+    "is_returning": 0,
+    "ship_count": 60,
+    "raw_text": "17m 57s 06:27:07 Shiva [1:120:8] 60 Ifrit [1:120:4] Eigene Flotte | Stationieren Flottendetails: Schiffe: Großer Transporter: 60 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Planet Rückruf:| 28.07.2026 06:09:46",
+    "ships": {
+      "Großer Transporter": 60,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
   }
 ]
