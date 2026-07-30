@@ -3749,5 +3749,32 @@
       "Deuterium": 0,
       "Nahrung": 0
     }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-30T04:22:07.483Z",
+    "created_at": "2026-07-30T04:22:07.483Z",
+    "player_name": "gustlberger",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-1691732",
+    "mission": "8",
+    "origin_coordinates": "1:120:8",
+    "destination_coordinates": "1:116:9",
+    "arrival": "06:30:32",
+    "is_returning": 0,
+    "ship_count": 3351,
+    "raw_text": "8m 26s 06:30:32 Mogry [1:120:8] 3.351 Trümmerfeld [1:116:9] Eigene Flotte | Abbau (R) Flottendetails: Schiffe: Kleiner Transporter: 601 Großer Transporter: 391 Leichter Jäger: 2.046 Schwerer Jäger: 1 Kreuzer: 110 Recycler: 142 Spionagesonde: 60 Ladung: Metall: 17.550.554 Kristall: 2.879.987 Deuterium: 2.968.334 Nahrung: 0 Trümmerfeld",
+    "ships": {
+      "Kleiner Transporter": 601,
+      "Großer Transporter": 391,
+      "Leichter Jäger": 2046,
+      "Schwerer Jäger": 1,
+      "Kreuzer": 110,
+      "Recycler": 142,
+      "Spionagesonde": 60,
+      "Metall": 17550554,
+      "Kristall": 2879987,
+      "Deuterium": 2968334,
+      "Nahrung": 0
+    }
   }
 ]
