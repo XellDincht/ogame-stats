@@ -3776,5 +3776,26 @@
       "Deuterium": 2968334,
       "Nahrung": 0
     }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-31T04:13:01.947Z",
+    "created_at": "2026-07-31T04:13:01.947Z",
+    "player_name": "gustlberger",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-1788138",
+    "mission": "4",
+    "origin_coordinates": "3:376:7",
+    "destination_coordinates": "1:120:8",
+    "arrival": "06:16:45",
+    "is_returning": 0,
+    "ship_count": 20,
+    "raw_text": "3m 46s 06:16:45 Leviathan [3:376:7] 20 Mogry [1:120:8] Eigene Flotte | Stationieren Flottendetails: Schiffe: Kleiner Transporter: 20 Ladung: Metall: 2.341 Kristall: 3.893 Deuterium: 76.167 Nahrung: 0 Mond Rückruf:| 31.07.2026 14:20:08",
+    "ships": {
+      "Kleiner Transporter": 20,
+      "Metall": 2341,
+      "Kristall": 3893,
+      "Deuterium": 76167,
+      "Nahrung": 0
+    }
   }
 ]
