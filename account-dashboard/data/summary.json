@@ -2,17 +2,17 @@
   "export_version": "7.4.0",
   "accounts": [
     {
-      "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-31T04:13:01.947Z",
-      "created_at": "2026-07-31T04:13:01.947Z",
+      "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-08-01T05:35:06.758Z",
+      "created_at": "2026-08-01T05:35:06.758Z",
       "player_id": "101521",
       "player_name": "gustlberger",
       "universe": "s282-de.ogame.gameforge.com",
       "collector_version": "7.8.0",
       "planet_count": 7,
       "production_per_hour": {
-        "metal": 720789,
-        "crystal": 311837,
-        "deuterium": 69174
+        "metal": 734046,
+        "crystal": 321243,
+        "deuterium": 72860
       }
     }
   ]
