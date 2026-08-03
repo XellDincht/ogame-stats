@@ -6,6 +6,7 @@
   let editing = null;
   let selectedFile = null;
   let objectUrl = null;
+  let playerAliasMap = new Map();
 
   function status(text, error = false) {
     const node = $("#messageStatus");
@@ -19,6 +20,42 @@
 
   function normalizePlayerName(value) {
     return String(value || "").trim().replace(/\s+/g, " ");
+  }
+
+
+  function playerKey(value) {
+    return normalizePlayerName(value).toLocaleLowerCase("de-DE");
+  }
+
+  function resolvePlayerName(value) {
+    const normalized = normalizePlayerName(value);
+    return playerAliasMap.get(playerKey(normalized)) || normalized;
+  }
+
+  async function loadPlayers() {
+    const { data, error } = await window.ogameSupabase
+      .from("players")
+      .select("display_name, aliases");
+
+    if (error) {
+      console.warn("Spieler-Aliase konnten nicht geladen werden:", error.message);
+      playerAliasMap = new Map();
+      return;
+    }
+
+    const nextMap = new Map();
+    for (const player of data || []) {
+      const display = normalizePlayerName(player.display_name);
+      if (!display) continue;
+
+      // Auch der Anzeigename selbst gilt automatisch als Alias.
+      const aliases = [display, ...(Array.isArray(player.aliases) ? player.aliases : [])];
+      for (const alias of aliases) {
+        const key = playerKey(alias);
+        if (key) nextMap.set(key, display);
+      }
+    }
+    playerAliasMap = nextMap;
   }
 
   function parseMoonAttempt(rawText) {
@@ -170,8 +207,9 @@
     const route = parsed.sourceCoords && parsed.targetCoords
       ? `<div class="moon-route"><span>${esc(parsed.sourceCoords)}</span><b aria-hidden="true">→</b><span>${esc(parsed.targetCoords)}</span></div>`
       : "";
-    const participantBadges = parsed.participants.length
-      ? `<div class="moon-badges">${parsed.participants.map(name => `<span class="moon-badge">${esc(name)}</span>`).join("")}</div>`
+    const resolvedParticipants = [...new Set(parsed.participants.map(resolvePlayerName).filter(Boolean))];
+    const participantBadges = resolvedParticipants.length
+      ? `<div class="moon-badges">${resolvedParticipants.map(name => `<span class="moon-badge">${esc(name)}</span>`).join("")}</div>`
       : "";
 
     return `<article class="panel message-card moon-card" data-id="${esc(item.id)}">
@@ -278,6 +316,7 @@
   document.addEventListener("ogame-auth-ready", async event => {
     auth = event.detail;
     $("#authUserName").textContent = displayName();
+    await loadPlayers();
     await loadMessages();
   }, { once: true });
   $("#messageForm")?.addEventListener("submit", saveMessage);
