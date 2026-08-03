@@ -3797,5 +3797,50 @@
       "Deuterium": 76167,
       "Nahrung": 0
     }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-08-03T04:30:28.333Z",
+    "created_at": "2026-08-03T04:30:28.333Z",
+    "player_name": "XellDincht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-2091370",
+    "mission": "3",
+    "origin_coordinates": "3:376:7",
+    "destination_coordinates": "1:120:8",
+    "arrival": "06:46:26",
+    "is_returning": 0,
+    "ship_count": 9,
+    "raw_text": "15m 59s 06:46:26 Leviathan [3:376:7] 9 Mogry [1:120:8] Eigene Flotte | Transport (R) Flottendetails: Schiffe: Großer Transporter: 9 Ladung: Metall: 0 Kristall: 0 Deuterium: 0 Nahrung: 0 Mond",
+    "ships": {
+      "Großer Transporter": 9,
+      "Metall": 0,
+      "Kristall": 0,
+      "Deuterium": 0,
+      "Nahrung": 0
+    }
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-08-03T04:30:28.333Z",
+    "created_at": "2026-08-03T04:30:28.333Z",
+    "player_name": "XellDincht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "flight_id": "eventRow-2093269",
+    "mission": "4",
+    "origin_coordinates": "1:120:4",
+    "destination_coordinates": "1:120:8",
+    "arrival": "06:45:22",
+    "is_returning": 0,
+    "ship_count": 1708,
+    "raw_text": "14m 55s 06:45:22 Ifrit [1:120:4] 1.708 Mogry [1:120:8] Eigene Flotte | Stationieren Flottendetails: Schiffe: Großer Transporter: 107 Leichter Jäger: 1.527 Kolonieschiff: 1 Recycler: 73 Ladung: Metall: 1.579.615 Kristall: 676.399 Deuterium: 123.540 Nahrung: 0 Mond Rückruf:| 03.08.2026 13:45:24",
+    "ships": {
+      "Großer Transporter": 107,
+      "Leichter Jäger": 1527,
+      "Kolonieschiff": 1,
+      "Recycler": 73,
+      "Metall": 1579615,
+      "Kristall": 676399,
+      "Deuterium": 123540,
+      "Nahrung": 0
+    }
   }
 ]
