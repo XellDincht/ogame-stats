@@ -7,9 +7,10 @@
   <meta name="theme-color" content="#07111f">
   <title>OGame Allianzstatistik</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="auth.css">
 </head>
 
-<body>
+<body class="auth-protected">
   <header class="hero">
     <div class="hero-inner alliance-hero">
       <img id="allianceLogo" class="alliance-logo" src="ally/Ally_main.png" alt="Allianzlogo">
@@ -20,11 +21,11 @@
   </header>
   <nav class="toolbar">
     <div class="range-tabs"><button class="tab active" data-range="1">Tag</button><button class="tab"
-        data-range="7">Woche</button><button class="tab" data-range="30">30 Tage</button><a class="nav-link" href="player.html">Spieler-Historie</a><a class="nav-link" href="hall-of-fame.html">Hall of Fame</a><a id="accountLink" class="nav-link" href="account.html" hidden>🔒 Accountdaten</a></div>
+        data-range="7">Woche</button><button class="tab" data-range="30">30 Tage</button><a class="nav-link" href="player.html">Spieler-Historie</a><a class="nav-link" href="hall-of-fame.html">Hall of Fame</a><a class="nav-link" href="messages.html">Nachrichten</a><a id="accountLink" class="nav-link" href="account.html">🔒 Accountdaten</a></div>
     <div class="toolbar-actions"><input id="search" type="search" placeholder="Spieler suchen …"><select
         id="playerFilter">
         <option value="all">Alle Spieler</option>
-      </select></div>
+      </select><button type="button" data-auth-logout>Abmelden</button></div>
   </nav>
   <main>
     <section class="panel alliance-panel"><div class="section-head"><div><h2>Echte Allianzstatistik</h2><p class="muted">Offizielle Allianzwerte aus dem Allianz-Highscore</p></div></div><section id="allianceSummary" class="summary-grid"></section><div class="chart-wrap"><canvas id="allianceChart"></canvas></div></section>
@@ -158,6 +159,9 @@
     </section>
   </main>
   <footer id="footer">Wird geladen …</footer>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="auth.js"></script>
   <script src="app.js"></script>
 </body>
 

@@ -7,21 +7,12 @@
     <meta name="theme-color" content="#07111f">
     <title>OGame Accountstatistik</title>
     <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="auth.css">
     <link rel="stylesheet" href="account.css">
 </head>
 
-<body>
-    <div id="login" class="account-login">
-        <form id="loginForm" class="panel login-card">
-            <p class="eyebrow">Geschützter Testbereich</p>
-            <h1>Accountstatistik</h1>
-            <p class="muted">Dieser Passwortschutz ist nur für die lokale Testphase vorgesehen.</p>
-            <input id="password" type="password" autocomplete="current-password" placeholder="Passwort" required>
-            <button type="submit">Öffnen</button>
-            <p id="loginError" class="negative"></p>
-        </form>
-    </div>
-    <div id="app" hidden>
+<body class="auth-protected">
+    <div id="app">
         <header class="hero">
             <div class="hero-inner">
                 <p class="eyebrow">Private Account Intelligence</p>
@@ -30,18 +21,21 @@
             </div>
         </header>
         <nav class="toolbar">
-            <div class="range-tabs"><a class="nav-link" href="index.html">Allianzstatistik</a>
+            <div class="range-tabs"><a class="nav-link" href="index.html">Allianzstatistik</a><a class="nav-link" href="messages.html">Nachrichten</a>
                 <select id="accountPlayer"></select><button id="showAccountStats" class="nav-link account-view-button"
                     type="button">Accountdaten</button><button id="showDashboard" class="nav-link account-view-button"
                     type="button">Dashboard</button>
-            </div><button id="logout">Sperren</button>
+            </div><button type="button" data-auth-logout>Abmelden</button>
         </nav>
         <main id="accountMain"></main>
         <section id="dashboardView" class="protected-dashboard" hidden><iframe id="dashboardFrame"
                 title="Privates OGame Dashboard" loading="lazy"></iframe></section>
         <footer id="accountFooter"></footer>
     </div>
-    <script src="account.js?v=7.6.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="auth.js"></script>
+  <script src="account.js?v=7.6.1"></script>
 </body>
 
 </html>

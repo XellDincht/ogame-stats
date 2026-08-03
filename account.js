@@ -1,4 +1,3 @@
-const TEST_PASSWORD = "Test1234!";
 const $ = selector => document.querySelector(selector);
 const fmt = value => value == null ? "–" : new Intl.NumberFormat("de-DE").format(Number(value) || 0);
 const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
@@ -18,24 +17,6 @@ window.addEventListener("message", event => {
   if (event.data?.type !== "ogame-dashboard-height") return;
   applyDashboardHeight(event.data.height);
 });
-
-function setLoginError(message = "") {
-  const node = $("#loginError");
-  if (node) node.textContent = message;
-}
-
-function unlockShell() {
-  const login = $("#login");
-  const app = $("#app");
-  if (login) {
-    login.hidden = true;
-    login.style.display = "none";
-  }
-  if (app) {
-    app.hidden = false;
-    app.style.display = "block";
-  }
-}
 
 function showAccountView() {
   const main = $("#accountMain");
@@ -162,40 +143,19 @@ async function loadAccountData() {
 }
 
 function start() {
-  unlockShell();
   showDashboardView();
   if ($("#accountSubtitle")) $("#accountSubtitle").textContent = "Dashboard wird geladen …";
   loadAccountData();
 }
 
 function init() {
-  $("#loginForm")?.addEventListener("submit", event => {
-    event.preventDefault();
-    setLoginError();
-    if ($("#password")?.value !== TEST_PASSWORD) {
-      setLoginError("Falsches Passwort.");
-      return;
-    }
-    sessionStorage.setItem("oasAccountUnlocked", "1");
-    start();
-  });
-
   $("#accountPlayer")?.addEventListener("change", () => {
     renderAccountData();
     showAccountView();
   });
   $("#showAccountStats")?.addEventListener("click", showAccountView);
   $("#showDashboard")?.addEventListener("click", showDashboardView);
-  $("#logout")?.addEventListener("click", () => {
-    sessionStorage.removeItem("oasAccountUnlocked");
-    location.reload();
-  });
-
-  if (sessionStorage.getItem("oasAccountUnlocked") === "1") start();
+  start();
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", init, { once: true });
-} else {
-  init();
-}
+document.addEventListener("ogame-auth-ready", init, { once: true });
