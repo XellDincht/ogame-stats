@@ -80,16 +80,50 @@
     return true;
   }
 
+  function clipboardImageFile(event) {
+    const data = event.clipboardData;
+    if (!data) return null;
+
+    // Variante 1: Clipboard-Items (Chrome/Edge, Snipping Tool, Bildbearbeitung)
+    for (const item of [...(data.items || [])]) {
+      if (item.kind !== "file") continue;
+      const blob = item.getAsFile();
+      if (!blob) continue;
+      const type = blob.type || item.type || "image/png";
+      if (!type.startsWith("image/")) continue;
+      const extension = type === "image/webp" ? "webp" : type === "image/jpeg" ? "jpg" : "png";
+      return new File([blob], `screenshot-${Date.now()}.${extension}`, {
+        type,
+        lastModified: Date.now()
+      });
+    }
+
+    // Variante 2: Clipboard-Files (wird von manchen Windows-Quellen verwendet)
+    for (const file of [...(data.files || [])]) {
+      const type = file.type || "image/png";
+      if (!type.startsWith("image/")) continue;
+      const extension = type === "image/webp" ? "webp" : type === "image/jpeg" ? "jpg" : "png";
+      return new File([file], file.name || `screenshot-${Date.now()}.${extension}`, {
+        type,
+        lastModified: file.lastModified || Date.now()
+      });
+    }
+
+    return null;
+  }
+
   function handleClipboardImage(event) {
-    const items = [...(event.clipboardData?.items || [])];
-    const imageItem = items.find(item => item.kind === "file" && item.type.startsWith("image/"));
-    if (!imageItem) return;
-    const blob = imageItem.getAsFile();
-    if (!blob) return;
-    const extension = blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "jpg";
-    const file = new File([blob], `screenshot-${Date.now()}.${extension}`, { type: blob.type, lastModified: Date.now() });
+    const file = clipboardImageFile(event);
+    if (!file) {
+      console.debug("[Mondarchiv] Kein Bild im Paste-Event erkannt", {
+        itemTypes: [...(event.clipboardData?.items || [])].map(item => ({ kind: item.kind, type: item.type })),
+        files: [...(event.clipboardData?.files || [])].map(file => ({ name: file.name, type: file.type, size: file.size }))
+      });
+      return;
+    }
+
     setSelectedImage(file, "Screenshot aus der Zwischenablage");
-    // Text darf parallel weiterhin normal in das Eingabefeld eingefügt werden.
+    // Vorhandener Text darf parallel weiterhin normal eingefügt werden.
   }
 
   function resetForm() {
@@ -253,6 +287,11 @@
     if (!setSelectedImage(file, "Screenshot")) event.target.value = "";
   });
   $("#messageContent")?.addEventListener("paste", handleClipboardImage);
+  // Zusätzlich global lauschen: Manche Browser liefern Screenshots nicht direkt am Textfeld.
+  document.addEventListener("paste", event => {
+    if (event.target === $("#messageContent")) return;
+    handleClipboardImage(event);
+  });
   $("#closeImageModal")?.addEventListener("click", closeImage);
   $("#imageModal")?.addEventListener("click", event => { if (event.target === event.currentTarget) closeImage(); });
 })();
