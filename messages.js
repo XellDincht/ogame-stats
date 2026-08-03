@@ -61,6 +61,37 @@
     };
   }
 
+  function setSelectedImage(file, sourceLabel = "Screenshot") {
+    if (!file) return false;
+    if (!file.type?.startsWith("image/")) {
+      status("Aus der Zwischenablage wurde keine Bilddatei erkannt.", true);
+      return false;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      status("Das Bild darf höchstens 5 MB groß sein.", true);
+      return false;
+    }
+    selectedFile = file;
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    objectUrl = URL.createObjectURL(file);
+    $("#imagePreview").src = objectUrl;
+    $("#imagePreview").hidden = false;
+    status(`${sourceLabel} erkannt und zum Upload vorgemerkt.`);
+    return true;
+  }
+
+  function handleClipboardImage(event) {
+    const items = [...(event.clipboardData?.items || [])];
+    const imageItem = items.find(item => item.kind === "file" && item.type.startsWith("image/"));
+    if (!imageItem) return;
+    const blob = imageItem.getAsFile();
+    if (!blob) return;
+    const extension = blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "jpg";
+    const file = new File([blob], `screenshot-${Date.now()}.${extension}`, { type: blob.type, lastModified: Date.now() });
+    setSelectedImage(file, "Screenshot aus der Zwischenablage");
+    // Text darf parallel weiterhin normal in das Eingabefeld eingefügt werden.
+  }
+
   function resetForm() {
     editing = null;
     selectedFile = null;
@@ -123,7 +154,7 @@
         ${participantBadges ? `<div class="moon-summary-item"><span>Beteiligte</span>${participantBadges}</div>` : ""}
       </div>
       <div class="moon-info"><span>Info</span><p>${esc(parsed.info)}</p></div>
-      ${item.imageUrl ? `<img class="message-thumbnail" src="${esc(item.imageUrl)}" alt="Screenshot zum Mondversuch" data-image>` : ""}
+      ${item.imageUrl ? `<button class="message-screenshot-button" type="button" data-image data-image-url="${esc(item.imageUrl)}" aria-label="Screenshot öffnen" title="Screenshot öffnen"><span aria-hidden="true">▣</span><span>Screenshot</span></button>` : ""}
       <div class="message-meta">Archiviert von <strong>${esc(archiveAuthor)}</strong> · ${new Date(item.created_at).toLocaleString("de-DE")}${item.updated_at ? " · bearbeitet" : ""}</div>
     </article>`;
   }
@@ -147,7 +178,7 @@
     list.innerHTML = withUrls.map(item => renderMessageCard(item, profileNames)).join("");
     list.querySelectorAll("[data-edit]").forEach(button => button.addEventListener("click", () => beginEdit(withUrls.find(x => x.id === button.closest("[data-id]").dataset.id))));
     list.querySelectorAll("[data-delete]").forEach(button => button.addEventListener("click", () => deleteMessage(withUrls.find(x => x.id === button.closest("[data-id]").dataset.id))));
-    list.querySelectorAll("[data-image]").forEach(img => img.addEventListener("click", () => openImage(img.src)));
+    list.querySelectorAll("[data-image]").forEach(button => button.addEventListener("click", () => openImage(button.dataset.imageUrl)));
   }
 
   function beginEdit(item) {
@@ -219,11 +250,9 @@
   $("#cancelEdit")?.addEventListener("click", resetForm);
   $("#messageImage")?.addEventListener("change", event => {
     const file = event.target.files?.[0] || null;
-    if (file && file.size > 5 * 1024 * 1024) { event.target.value = ""; return status("Das Bild darf höchstens 5 MB groß sein.", true); }
-    selectedFile = file;
-    if (objectUrl) URL.revokeObjectURL(objectUrl);
-    if (file) { objectUrl = URL.createObjectURL(file); $("#imagePreview").src = objectUrl; $("#imagePreview").hidden = false; }
+    if (!setSelectedImage(file, "Screenshot")) event.target.value = "";
   });
+  $("#messageContent")?.addEventListener("paste", handleClipboardImage);
   $("#closeImageModal")?.addEventListener("click", closeImage);
   $("#imageModal")?.addEventListener("click", event => { if (event.target === event.currentTarget) closeImage(); });
 })();

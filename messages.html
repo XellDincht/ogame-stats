@@ -17,11 +17,11 @@
   </nav>
   <main>
     <section class="panel">
-      <div class="section-head"><div><h2 id="editorHeading">Mondversuch archivieren</h2><p class="muted">Die komplette OGame-Rundmail unverändert einfügen. Titel, Beteiligte, Route, Zeitpunkt und Info werden automatisch erkannt.</p></div></div>
+      <div class="section-head"><div><h2 id="editorHeading">Mondversuch archivieren</h2><p class="muted">Die komplette OGame-Rundmail einfügen. Ein mitkopierter Screenshot wird automatisch erkannt; alternativ kann er mit Strg+V in dieses Feld eingefügt werden.</p></div></div>
       <form id="messageForm" class="message-editor">
         <textarea id="messageContent" required placeholder="Rundmail von&#10;Savio&#10;Von:&#10;Savio&#10;02.08.2026 21:53:32&#10;&#10;Mondversuch #10 Von 1.115.9 M (Savio) --> auf 1.120.4 (Xell). …"></textarea>
         <div class="message-editor-actions">
-          <label class="nav-link">Screenshot auswählen<input id="messageImage" type="file" accept="image/png,image/jpeg,image/webp" hidden></label>
+          <label class="nav-link">Screenshot auswählen<input id="messageImage" type="file" accept="image/png,image/jpeg,image/webp" hidden></label><span id="pasteHint" class="message-paste-hint">Bild auch per Strg+V einfügbar</span>
           <button id="saveMessage" type="submit">Mondversuch speichern</button>
           <button id="cancelEdit" type="button" hidden>Bearbeiten abbrechen</button>
           <span id="messageStatus" class="muted"></span>
