@@ -24,3 +24,16 @@
 .alliance-hero{display:flex;align-items:center;gap:24px}.alliance-logo{width:112px;height:112px;object-fit:contain;border-radius:18px;border:1px solid var(--border);background:rgba(7,17,31,.55);padding:8px;box-shadow:var(--shadow)}.alliance-panel{margin-top:0}.member-summary{margin-top:24px}.alliance-empty{padding:18px;color:var(--muted);border:1px dashed var(--border);border-radius:14px}.rank-value{display:flex;align-items:baseline;gap:8px}.rank-change{font-size:.85rem}@media(max-width:650px){.alliance-hero{align-items:flex-start}.alliance-logo{width:78px;height:78px}}
 
 .hof-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px}.hof-card .metric-row strong{font-size:.95rem}.member-status{display:inline-flex;padding:3px 9px;border-radius:999px;font-size:.75rem;font-weight:700}.member-status.active{background:rgba(103,232,165,.14);color:#67e8a5}.member-status.former{background:rgba(157,178,200,.14);color:#b8c7d9}
+
+/* Datenquellen-Umschalter während der Supabase-Migration */
+.data-source-control{display:flex;align-items:center;gap:.45rem;padding:.35rem .55rem;border:1px solid rgba(125,211,252,.25);border-radius:10px;background:rgba(7,17,31,.55);font-size:.78rem;color:#9db2c8;white-space:nowrap}
+.data-source-control select{min-width:118px}
+.data-source-status{display:inline-flex;align-items:center;gap:.35rem;padding:.38rem .62rem;border-radius:999px;border:1px solid rgba(157,178,200,.22);background:rgba(7,17,31,.45);font-size:.78rem;color:#9db2c8;white-space:nowrap}
+.data-source-status::before{content:"";width:.48rem;height:.48rem;border-radius:50%;background:#9db2c8;box-shadow:0 0 8px currentColor}
+.data-source-status.is-local{color:#ffd166;border-color:rgba(255,209,102,.32)}
+.data-source-status.is-local::before{background:#ffd166}
+.data-source-status.is-supabase{color:#67e8a5;border-color:rgba(103,232,165,.32)}
+.data-source-status.is-supabase::before{background:#67e8a5}
+.data-source-status.is-error{color:#ff7d8b;border-color:rgba(255,125,139,.38)}
+.data-source-status.is-error::before{background:#ff7d8b}
+@media(max-width:900px){.data-source-control span{display:none}.data-source-status{display:none}}
