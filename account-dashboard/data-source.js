@@ -2,8 +2,9 @@
   "use strict";
 
   const STORAGE_KEY = "ogame.dashboard.dataSource";
-  const MAX_SNAPSHOTS_PER_ACCOUNT = 31;
   const PAGE_SIZE = 1000;
+  const snapshotCache = new Map();
+  const snapshotMetaBySourceId = new Map();
 
   function source() {
     return localStorage.getItem(STORAGE_KEY) === "supabase" ? "supabase" : "local";
@@ -31,12 +32,11 @@
     return data || [];
   }
 
-  async function paged(table, select, snapshotIds, label) {
-    if (!snapshotIds.length) return [];
+  async function pagedBySnapshot(table, select, dbSnapshotId, label) {
     const result = [];
     for (let from = 0; ; from += PAGE_SIZE) {
       const page = await rows(
-        client().from(table).select(select).in("snapshot_id", snapshotIds).range(from, from + PAGE_SIZE - 1),
+        client().from(table).select(select).eq("snapshot_id", dbSnapshotId).range(from, from + PAGE_SIZE - 1),
         label
       );
       result.push(...page);
@@ -45,13 +45,7 @@
     return result;
   }
 
-  function chunks(values, size = 100) {
-    const out = [];
-    for (let i = 0; i < values.length; i += size) out.push(values.slice(i, i + size));
-    return out;
-  }
-
-  async function loadSupabase() {
+  async function loadSupabaseMetadata() {
     const sb = client();
     const { data: sessionData, error: sessionError } = await sb.auth.getSession();
     if (sessionError) throw new Error(`Supabase-Session: ${sessionError.message}`);
@@ -65,116 +59,162 @@
       "Accounts"
     );
 
-    const snapshotRows = [];
+    const snapshots = [];
+    snapshotMetaBySourceId.clear();
     for (const account of accounts) {
       const found = await rows(
         sb.from("ogame_account_snapshots")
           .select("id, account_id, source_snapshot_id, created_at, imported_at, collector_version")
           .eq("account_id", account.id)
-          .order("created_at", { ascending: false })
-          .limit(MAX_SNAPSHOTS_PER_ACCOUNT),
-        `Snapshots für ${account.current_player_name}`
+          .order("created_at", { ascending: true }),
+        `Snapshot-Liste für ${account.current_player_name}`
       );
-      for (const snapshot of found) snapshotRows.push({ ...snapshot, account });
+      for (const row of found) {
+        const meta = {
+          db_snapshot_id: row.id,
+          snapshot_id: row.source_snapshot_id,
+          created_at: row.created_at,
+          imported_at: row.imported_at,
+          player_id: account.ogame_player_id,
+          player_name: account.current_player_name,
+          universe: account.universe,
+          collector_version: row.collector_version,
+          account_id: account.id
+        };
+        snapshots.push(meta);
+        snapshotMetaBySourceId.set(meta.snapshot_id, meta);
+      }
     }
 
-    const snapshotIds = snapshotRows.map(row => row.id);
-    const objectRows = [];
-    const productionRows = [];
-    const technologyRows = [];
-    const flightRows = [];
+    const latestByAccount = new Map();
+    for (const snapshot of snapshots) {
+      const current = latestByAccount.get(snapshot.account_id);
+      if (!current || new Date(snapshot.created_at) > new Date(current.created_at)) {
+        latestByAccount.set(snapshot.account_id, snapshot);
+      }
+    }
 
-    for (const ids of chunks(snapshotIds)) {
-      objectRows.push(...await paged(
+    const summary = {
+      export_version: "supabase-lazy-v1",
+      accounts: accounts.map(account => {
+        const latest = latestByAccount.get(account.id);
+        return {
+          snapshot_id: latest?.snapshot_id || null,
+          created_at: latest?.created_at || null,
+          player_id: account.ogame_player_id,
+          player_name: account.current_player_name,
+          universe: account.universe,
+          collector_version: latest?.collector_version || null,
+          planet_count: null,
+          production_per_hour: { metal: 0, crystal: 0, deuterium: 0 }
+        };
+      }).filter(account => account.snapshot_id)
+    };
+
+    return { summary, snapshots, planets: [], production: [], technologies: [], flights: [], lazy: true };
+  }
+
+  async function loadSupabaseSnapshot(sourceSnapshotId) {
+    if (snapshotCache.has(sourceSnapshotId)) return snapshotCache.get(sourceSnapshotId);
+    const sb = client();
+    let meta = snapshotMetaBySourceId.get(sourceSnapshotId);
+    if (!meta) {
+      const found = await rows(
+        sb.from("ogame_account_snapshots")
+          .select("id, account_id, source_snapshot_id, created_at, imported_at, collector_version, ogame_accounts!inner(ogame_player_id, current_player_name, universe)")
+          .eq("source_snapshot_id", sourceSnapshotId)
+          .limit(1),
+        "Snapshot"
+      );
+      const row = found[0];
+      if (!row) throw new Error(`Snapshot nicht gefunden: ${sourceSnapshotId}`);
+      const account = row.ogame_accounts;
+      meta = {
+        db_snapshot_id: row.id,
+        snapshot_id: row.source_snapshot_id,
+        created_at: row.created_at,
+        imported_at: row.imported_at,
+        player_id: account.ogame_player_id,
+        player_name: account.current_player_name,
+        universe: account.universe,
+        collector_version: row.collector_version,
+        account_id: row.account_id
+      };
+      snapshotMetaBySourceId.set(sourceSnapshotId, meta);
+    }
+
+    const dbId = meta.db_snapshot_id;
+    const [objectRows, technologyRows, flightRows] = await Promise.all([
+      pagedBySnapshot(
         "ogame_account_objects",
         "id, snapshot_id, source_object_id, object_type, object_order, name, coordinates, image_url, background_image_url, lifeform_name, diameter_km, fields_used, fields_total, temperature_min_c, temperature_max_c",
-        ids,
+        dbId,
         "Objekte"
-      ));
-      technologyRows.push(...await paged(
+      ),
+      pagedBySnapshot(
         "ogame_account_technologies",
         "snapshot_id, object_id, category, technology_id, name, value",
-        ids,
+        dbId,
         "Technologien"
-      ));
-      flightRows.push(...await paged(
+      ),
+      pagedBySnapshot(
         "ogame_account_flights",
         "snapshot_id, source_flight_id, mission, origin_coordinates, destination_coordinates, arrival_text, is_returning, ship_count, ships, raw_text",
-        ids,
+        dbId,
         "Flüge"
-      ));
-    }
+      )
+    ]);
 
     const objectIds = objectRows.map(row => row.id);
-    for (const ids of chunks(objectIds)) {
-      if (!ids.length) continue;
-      const page = await rows(
-        sb.from("ogame_account_production")
-          .select("object_id, metal_per_hour, crystal_per_hour, deuterium_per_hour, energy_available, energy_production, metal_current, crystal_current, deuterium_current, metal_storage, crystal_storage, deuterium_storage, source")
-          .in("object_id", ids),
-        "Produktion"
-      );
-      productionRows.push(...page);
-    }
+    const productionRows = objectIds.length
+      ? await rows(
+          sb.from("ogame_account_production")
+            .select("object_id, metal_per_hour, crystal_per_hour, deuterium_per_hour, energy_available, energy_production, metal_current, crystal_current, deuterium_current, metal_storage, crystal_storage, deuterium_storage, source")
+            .in("object_id", objectIds),
+          "Produktion"
+        )
+      : [];
 
-    const snapById = new Map(snapshotRows.map(row => [row.id, row]));
     const objectById = new Map(objectRows.map(row => [row.id, row]));
-    const snapshots = snapshotRows.map(row => ({
-      snapshot_id: row.source_snapshot_id,
-      created_at: row.created_at,
-      imported_at: row.imported_at,
-      player_id: row.account.ogame_player_id,
-      player_name: row.account.current_player_name,
-      universe: row.account.universe,
-      collector_version: row.collector_version
-    }));
+    const common = {
+      snapshot_id: meta.snapshot_id,
+      created_at: meta.created_at,
+      player_name: meta.player_name,
+      universe: meta.universe
+    };
 
-    const planets = objectRows.map(row => {
-      const snap = snapById.get(row.snapshot_id);
-      return {
-        snapshot_id: snap.source_snapshot_id,
-        created_at: snap.created_at,
-        player_name: snap.account.current_player_name,
-        universe: snap.account.universe,
-        planet_id: row.source_object_id,
-        name: row.name,
-        coordinates: row.coordinates ? `[${String(row.coordinates).replace(/[\[\]]/g, "")}]` : "",
-        object_type: row.object_type,
-        planet_order: row.object_order,
-        image_url: row.image_url,
-        background_image_url: row.background_image_url,
-        lifeform_name: row.lifeform_name,
-        diameter_km: row.diameter_km,
-        fields_used: row.fields_used,
-        fields_total: row.fields_total,
-        temperature_min_c: row.temperature_min_c,
-        temperature_max_c: row.temperature_max_c
-      };
-    });
+    const planets = objectRows.map(row => ({
+      ...common,
+      planet_id: row.source_object_id,
+      name: row.name,
+      coordinates: row.coordinates ? `[${String(row.coordinates).replace(/[\[\]]/g, "")}]` : "",
+      object_type: row.object_type,
+      planet_order: row.object_order,
+      image_url: row.image_url,
+      background_image_url: row.background_image_url,
+      lifeform_name: row.lifeform_name,
+      diameter_km: row.diameter_km,
+      fields_used: row.fields_used,
+      fields_total: row.fields_total,
+      temperature_min_c: row.temperature_min_c,
+      temperature_max_c: row.temperature_max_c
+    }));
 
     const production = productionRows.map(row => {
       const object = objectById.get(row.object_id);
-      const snap = snapById.get(object.snapshot_id);
       return {
-        snapshot_id: snap.source_snapshot_id,
-        created_at: snap.created_at,
-        player_name: snap.account.current_player_name,
-        universe: snap.account.universe,
-        planet_id: object.source_object_id,
-        planet_name: object.name,
-        coordinates: object.coordinates ? `[${String(object.coordinates).replace(/[\[\]]/g, "")}]` : "",
+        ...common,
+        planet_id: object?.source_object_id ?? null,
+        planet_name: object?.name ?? null,
+        coordinates: object?.coordinates ? `[${String(object.coordinates).replace(/[\[\]]/g, "")}]` : "",
         ...row
       };
     });
 
     const technologies = technologyRows.map(row => {
-      const snap = snapById.get(row.snapshot_id);
       const object = row.object_id ? objectById.get(row.object_id) : null;
       return {
-        snapshot_id: snap.source_snapshot_id,
-        created_at: snap.created_at,
-        player_name: snap.account.current_player_name,
-        universe: snap.account.universe,
+        ...common,
         planet_id: object?.source_object_id ?? null,
         planet_name: object?.name ?? null,
         coordinates: object?.coordinates ? `[${String(object.coordinates).replace(/[\[\]]/g, "")}]` : null,
@@ -185,67 +225,65 @@
       };
     });
 
-    const flights = flightRows.map(row => {
-      const snap = snapById.get(row.snapshot_id);
-      return {
-        snapshot_id: snap.source_snapshot_id,
-        created_at: snap.created_at,
-        player_name: snap.account.current_player_name,
-        universe: snap.account.universe,
-        flight_id: row.source_flight_id,
-        mission: row.mission,
-        origin_coordinates: row.origin_coordinates,
-        destination_coordinates: row.destination_coordinates,
-        arrival: row.arrival_text,
-        is_returning: row.is_returning ? 1 : 0,
-        ship_count: row.ship_count,
-        ships: row.ships || {},
-        raw_text: row.raw_text
-      };
-    });
+    const flights = flightRows.map(row => ({
+      ...common,
+      flight_id: row.source_flight_id,
+      mission: row.mission,
+      origin_coordinates: row.origin_coordinates,
+      destination_coordinates: row.destination_coordinates,
+      arrival: row.arrival_text,
+      is_returning: row.is_returning ? 1 : 0,
+      ship_count: row.ship_count,
+      ships: row.ships || {},
+      raw_text: row.raw_text
+    }));
 
-    const latestByAccount = new Map();
-    for (const row of snapshotRows) {
-      const current = latestByAccount.get(row.account_id);
-      if (!current || new Date(row.created_at) > new Date(current.created_at)) latestByAccount.set(row.account_id, row);
-    }
-    const summary = {
-      export_version: "supabase-v1",
-      accounts: accounts.map(account => {
-        const latest = latestByAccount.get(account.id);
-        const ownPlanets = latest ? planets.filter(p => p.snapshot_id === latest.source_snapshot_id) : [];
-        const ownProduction = latest ? production.filter(p => p.snapshot_id === latest.source_snapshot_id) : [];
-        return {
-          snapshot_id: latest?.source_snapshot_id || null,
-          created_at: latest?.created_at || null,
-          player_id: account.ogame_player_id,
-          player_name: account.current_player_name,
-          universe: account.universe,
-          collector_version: latest?.collector_version || null,
-          planet_count: ownPlanets.length,
-          production_per_hour: {
-            metal: ownProduction.reduce((sum, p) => sum + (Number(p.metal_per_hour) || 0), 0),
-            crystal: ownProduction.reduce((sum, p) => sum + (Number(p.crystal_per_hour) || 0), 0),
-            deuterium: ownProduction.reduce((sum, p) => sum + (Number(p.deuterium_per_hour) || 0), 0)
-          }
-        };
-      }).filter(a => a.snapshot_id)
-    };
-
-    return { summary, snapshots, planets, production, technologies, flights };
+    const result = { snapshot: meta, planets, production, technologies, flights };
+    snapshotCache.set(sourceSnapshotId, result);
+    return result;
   }
 
+  let localDataPromise = null;
   async function loadLocal() {
-    const [summary, snapshots, planets, production, technologies, flights] = await Promise.all(
-      ["summary", "snapshots", "planets", "production", "technologies", "active_flights"]
-        .map(name => localJson(`data/${name}.json`))
-    );
-    return { summary, snapshots, planets, production, technologies, flights };
+    if (!localDataPromise) {
+      localDataPromise = Promise.all(
+        ["summary", "snapshots", "planets", "production", "technologies", "active_flights"]
+          .map(name => localJson(`data/${name}.json`))
+      ).then(([summary, snapshots, planets, production, technologies, flights]) => ({
+        summary, snapshots, planets, production, technologies, flights, lazy: false
+      }));
+    }
+    return localDataPromise;
+  }
+
+  async function loadLocalSnapshot(sourceSnapshotId) {
+    const all = await loadLocal();
+    const snapshot = all.snapshots.find(row => row.snapshot_id === sourceSnapshotId);
+    return {
+      snapshot,
+      planets: all.planets.filter(row => row.snapshot_id === sourceSnapshotId),
+      production: all.production.filter(row => row.snapshot_id === sourceSnapshotId),
+      technologies: all.technologies.filter(row => row.snapshot_id === sourceSnapshotId),
+      flights: all.flights.filter(row => row.snapshot_id === sourceSnapshotId)
+    };
   }
 
   async function load() {
-    return source() === "supabase" ? loadSupabase() : loadLocal();
+    return source() === "supabase" ? loadSupabaseMetadata() : loadLocal();
   }
 
-  window.ogameAccountDashboardDataSource = Object.freeze({ source, load, loadLocal, loadSupabase });
+  async function loadSnapshot(sourceSnapshotId) {
+    return source() === "supabase"
+      ? loadSupabaseSnapshot(sourceSnapshotId)
+      : loadLocalSnapshot(sourceSnapshotId);
+  }
+
+  window.ogameAccountDashboardDataSource = Object.freeze({
+    source,
+    load,
+    loadSnapshot,
+    loadLocal,
+    loadSupabase: loadSupabaseMetadata,
+    clearCache: () => snapshotCache.clear()
+  });
 })();

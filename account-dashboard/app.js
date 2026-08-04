@@ -1,4 +1,4 @@
-const state = { summary: null, snapshots: [], planets: [], production: [], technologies: [], flights: [], selectedAccount: null, selectedSnapshot: null, productionHours: 24 };
+const state = { summary: null, snapshots: [], planets: [], production: [], technologies: [], flights: [], selectedAccount: null, selectedSnapshot: null, productionHours: 24, renderToken: 0 };
 const $ = s => document.querySelector(s); const nf = new Intl.NumberFormat('de-DE');
 const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
 const fmt = v => Number.isFinite(Number(v)) ? nf.format(Math.trunc(Number(v))) : '–';
@@ -30,7 +30,22 @@ async function json(path) { const r = await fetch(path, { cache: 'no-store' }); 
 function accountKey(a) { return `${a.player_id}|${a.universe}` }
 function account() { return state.summary.accounts.find(a => accountKey(a) === state.selectedAccount) }
 function localDay(v) { const d = new Date(v); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
-function dailySnapshots(a) { const all = state.snapshots.filter(s => s.player_id === a.player_id && s.universe === a.universe).sort((x, y) => x.created_at.localeCompare(y.created_at)); const byDay = new Map(); for (const s of all) { const day = localDay(s.created_at); if (!byDay.has(day)) byDay.set(day, s) } return [...byDay.values()].sort((x, y) => y.created_at.localeCompare(x.created_at)) }
+function dailySnapshots(a) {
+  const all = state.snapshots
+    .filter(s => s.player_id === a.player_id && s.universe === a.universe)
+    .sort((x, y) => x.created_at.localeCompare(y.created_at));
+  const byDay = new Map();
+  for (const snapshot of all) {
+    const day = localDay(snapshot.created_at);
+    const group = byDay.get(day) || [];
+    group.push(snapshot);
+    byDay.set(day, group);
+  }
+  const today = localDay(new Date().toISOString());
+  return [...byDay.entries()]
+    .map(([day, group]) => day === today ? group.at(-1) : group[0])
+    .sort((x, y) => y.created_at.localeCompare(x.created_at));
+}
 function selectedSnapshot(a) { const daily = dailySnapshots(a); return daily.find(s => s.snapshot_id === state.selectedSnapshot) || daily[0] }
 function previousDailySnapshot(a, s) { const daily = dailySnapshots(a); const i = daily.findIndex(x => x.snapshot_id === s.snapshot_id); return i >= 0 ? daily[i + 1] || null : null }
 function ownRows(list, s) { return s ? list.filter(x => x.snapshot_id === s.snapshot_id) : [] }
@@ -63,11 +78,117 @@ function subheading(label, key) { return `<tr class="subsection-row" data-group=
 function lifeformRaceSection(race, planets, techRows, travelling, previousTechRows, hasPrevious) { const key = `lifeform_${race.prefix}`; const buildings = technologyRows('lifeform_buildings', planets, techRows, travelling, lifeformPart(race.prefix, 'buildings'), key, previousTechRows, hasPrevious); const research = technologyRows('lifeform_research', planets, techRows, travelling, lifeformPart(race.prefix, 'research'), key, previousTechRows, hasPrevious); if (!buildings && !research) return ''; let rows = ''; if (buildings) rows += subheading('Gebäude', key) + buildings; if (research) rows += subheading('Forschung', key) + research; return section(race.name, key, rows) }
 function lifeformSubtitle(planets) { const names = [...new Set(planets.map(p => p.lifeform_name).filter(Boolean))]; return names.length ? names.join(' · ') : '' }
 function updateSnapshotSelect(a) { const sel = $('#snapshotSelect'); const daily = dailySnapshots(a); sel.innerHTML = daily.map(s => `<option value="${esc(s.snapshot_id)}">${new Date(s.created_at).toLocaleDateString('de-DE')} · ${new Date(s.created_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</option>`).join(''); if (!state.selectedSnapshot || !daily.some(s => s.snapshot_id === state.selectedSnapshot)) state.selectedSnapshot = daily[0]?.snapshot_id || null; sel.value = state.selectedSnapshot || '' }
-function render() {
-  const a = account(); if (!a) return; updateSnapshotSelect(a); const s = selectedSnapshot(a), prev = previousDailySnapshot(a, s); if (!s) return; const planets = ownRows(state.planets, s).sort((x, y) => (x.planet_order ?? 999) - (y.planet_order ?? 999)); setColumnWidth(planets.length); const prodRows = ownRows(state.production, s), techRows = ownRows(state.technologies, s), flights = ownRows(state.flights, s), previousProdRows = ownRows(state.production, prev), previousTechRows = ownRows(state.technologies, prev); const prods = new Map(prodRows.map(x => [x.planet_id, x])); const previousProds = new Map(previousProdRows.map(x => [x.planet_id, x])); const travelling = sumShipsMap(flights); const stationary = techRows.filter(t => t.category === 'ships').reduce((n, t) => n + (Number(t.value) || 0), 0); const moving = movingShipTotal(flights); const totals = { metal: 0, crystal: 0, deut: 0 }; for (const p of planets) { const r = prods.get(p.planet_id) || {}; totals.metal += Number(r.metal_per_hour) || 0; totals.crystal += Number(r.crystal_per_hour) || 0; totals.deut += Number(r.deuterium_per_hour) || 0 }
-  const factor = state.productionHours, label = periodLabel(), productionTotal = (totals.metal + totals.crystal + totals.deut) * factor; $('#playerName').textContent = a.player_name; $('#universe').textContent = a.universe; $('#latestSnapshot').textContent = dateFmt(s.created_at); $('#planetCount').textContent = fmt(planets.length); $('#metalPeriodLabel').textContent = `Metall / ${label}`; $('#crystalPeriodLabel').textContent = `Kristall / ${label}`; $('#deutPeriodLabel').textContent = `Deuterium / ${label}`; $('#sumPeriodLabel').textContent = `∑ Produktion / ${label}`; $('#totalMetal').textContent = prodFmt(totals.metal * factor); $('#totalCrystal').textContent = prodFmt(totals.crystal * factor); $('#totalDeuterium').textContent = prodFmt(totals.deut * factor); $('#totalProduction').textContent = prodFmt(productionTotal); $('#stationedShips').textContent = fmt(stationary); $('#travellingShips').textContent = fmt(moving); $('#allShips').textContent = fmt(stationary + moving); $('#travellingHint').textContent = moving === 0 && flights.length ? 'Flotten erkannt, aber Anzahl nicht lesbar' : ''; $('#empireHead').innerHTML = header(planets);
-  const categories = [['Gebäude', 'buildings'], ['Anlagen', 'facilities'], ['Forschung', 'research'], ['Schiffe', 'ships'], ['Verteidigung', 'defenses']]; let body = section('Produktion', 'production', productionRows(planets, prods, previousProds, Boolean(prev))); for (const [label, key] of categories) body += section(label, key, technologyRows(key, planets, techRows, travelling, normalTech, key, previousTechRows, Boolean(prev))); for (const race of LIFEFORM_RACES) body += lifeformRaceSection(race, planets, techRows, travelling, previousTechRows, Boolean(prev)); $('#empireBody').innerHTML = body;
-  document.querySelectorAll('[data-toggle]').forEach(b => b.onclick = () => { const key = b.dataset.toggle; b.closest('.section-row').classList.toggle('collapsed'); document.querySelectorAll(`[data-group="${key}"]`).forEach(r => r.classList.toggle('hidden-row')); requestAnimationFrame(notifyParentHeight) }); requestAnimationFrame(notifyParentHeight)
+async function render() {
+  const token = ++state.renderToken;
+  const a = account();
+  if (!a) return;
+  updateSnapshotSelect(a);
+  const s = selectedSnapshot(a);
+  const prev = s ? previousDailySnapshot(a, s) : null;
+  if (!s) return;
+
+  const message = $('#message');
+  if (message) {
+    message.textContent = 'Tagesstand wird geladen …';
+    message.classList.remove('hidden');
+  }
+
+  try {
+    const [currentData, previousData] = await Promise.all([
+      window.ogameAccountDashboardDataSource.loadSnapshot(s.snapshot_id),
+      prev ? window.ogameAccountDashboardDataSource.loadSnapshot(prev.snapshot_id) : Promise.resolve(null)
+    ]);
+    if (token !== state.renderToken) return;
+
+    state.planets = [...(currentData.planets || []), ...(previousData?.planets || [])];
+    state.production = [...(currentData.production || []), ...(previousData?.production || [])];
+    state.technologies = [...(currentData.technologies || []), ...(previousData?.technologies || [])];
+    state.flights = [...(currentData.flights || []), ...(previousData?.flights || [])];
+
+    const planets = ownRows(state.planets, s).sort((x, y) => (x.planet_order ?? 999) - (y.planet_order ?? 999));
+    setColumnWidth(planets.length);
+    const prodRows = ownRows(state.production, s), techRows = ownRows(state.technologies, s), flights = ownRows(state.flights, s);
+    const previousProdRows = ownRows(state.production, prev), previousTechRows = ownRows(state.technologies, prev);
+    const prods = new Map(prodRows.map(x => [x.planet_id, x]));
+    const previousProds = new Map(previousProdRows.map(x => [x.planet_id, x]));
+    const travelling = sumShipsMap(flights);
+    const stationary = techRows.filter(t => t.category === 'ships').reduce((n, t) => n + (Number(t.value) || 0), 0);
+    const moving = movingShipTotal(flights);
+    const totals = { metal: 0, crystal: 0, deut: 0 };
+    for (const p of planets) {
+      const r = prods.get(p.planet_id) || {};
+      totals.metal += Number(r.metal_per_hour) || 0;
+      totals.crystal += Number(r.crystal_per_hour) || 0;
+      totals.deut += Number(r.deuterium_per_hour) || 0;
+    }
+    const factor = state.productionHours, label = periodLabel(), productionTotal = (totals.metal + totals.crystal + totals.deut) * factor;
+    $('#playerName').textContent = a.player_name;
+    $('#universe').textContent = a.universe;
+    $('#latestSnapshot').textContent = dateFmt(s.created_at);
+    $('#planetCount').textContent = fmt(planets.length);
+    $('#metalPeriodLabel').textContent = `Metall / ${label}`;
+    $('#crystalPeriodLabel').textContent = `Kristall / ${label}`;
+    $('#deutPeriodLabel').textContent = `Deuterium / ${label}`;
+    $('#sumPeriodLabel').textContent = `∑ Produktion / ${label}`;
+    $('#totalMetal').textContent = prodFmt(totals.metal * factor);
+    $('#totalCrystal').textContent = prodFmt(totals.crystal * factor);
+    $('#totalDeuterium').textContent = prodFmt(totals.deut * factor);
+    $('#totalProduction').textContent = prodFmt(productionTotal);
+    $('#stationedShips').textContent = fmt(stationary);
+    $('#travellingShips').textContent = fmt(moving);
+    $('#allShips').textContent = fmt(stationary + moving);
+    $('#travellingHint').textContent = moving === 0 && flights.length ? 'Flotten erkannt, aber Anzahl nicht lesbar' : '';
+    $('#empireHead').innerHTML = header(planets);
+    const categories = [['Gebäude', 'buildings'], ['Anlagen', 'facilities'], ['Forschung', 'research'], ['Schiffe', 'ships'], ['Verteidigung', 'defenses']];
+    let body = section('Produktion', 'production', productionRows(planets, prods, previousProds, Boolean(prev)));
+    for (const [categoryLabel, key] of categories) body += section(categoryLabel, key, technologyRows(key, planets, techRows, travelling, normalTech, key, previousTechRows, Boolean(prev)));
+    for (const race of LIFEFORM_RACES) body += lifeformRaceSection(race, planets, techRows, travelling, previousTechRows, Boolean(prev));
+    $('#empireBody').innerHTML = body;
+    document.querySelectorAll('[data-toggle]').forEach(b => b.onclick = () => {
+      const key = b.dataset.toggle;
+      b.closest('.section-row').classList.toggle('collapsed');
+      document.querySelectorAll(`[data-group="${key}"]`).forEach(r => r.classList.toggle('hidden-row'));
+      requestAnimationFrame(notifyParentHeight);
+    });
+    if (message) message.classList.add('hidden');
+    requestAnimationFrame(notifyParentHeight);
+  } catch (error) {
+    if (token !== state.renderToken) return;
+    if (message) {
+      message.textContent = `Tagesstand konnte nicht geladen werden: ${error.message}`;
+      message.classList.remove('hidden');
+    }
+  }
 }
 if ('ResizeObserver' in window) new ResizeObserver(() => requestAnimationFrame(notifyParentHeight)).observe(document.documentElement); window.addEventListener('load', notifyParentHeight); window.addEventListener('resize', notifyParentHeight);
-async function init() { try { const loaded = await window.ogameAccountDashboardDataSource.load(); const { summary, snapshots, planets, production, technologies, flights } = loaded; Object.assign(state, { summary, snapshots, planets, production, technologies, flights }); const sel = $('#accountSelect'); sel.innerHTML = summary.accounts.map(a => `<option value="${esc(accountKey(a))}">${esc(a.player_name)} · ${esc(a.universe)}</option>`).join(''); state.selectedAccount = sel.value; sel.onchange = () => { state.selectedAccount = sel.value; state.selectedSnapshot = null; render() }; $('#snapshotSelect').onchange = e => { state.selectedSnapshot = e.target.value; render() }; document.querySelectorAll('[data-period]').forEach(button => button.onclick = () => { state.productionHours = Number(button.dataset.period) || 24; document.querySelectorAll('[data-period]').forEach(item => item.classList.toggle('active', item === button)); render() }); $('#reloadButton').onclick = () => location.reload(); window.addEventListener('resize', () => setColumnWidth(ownRows(state.planets, selectedSnapshot(account())).length)); render() } catch (e) { $('#message').textContent = `Dashboard konnte nicht geladen werden: ${e.message}`; $('#message').classList.remove('hidden') } } init();
+async function init() {
+  try {
+    const loaded = await window.ogameAccountDashboardDataSource.load();
+    const { summary, snapshots } = loaded;
+    Object.assign(state, { summary, snapshots, planets: [], production: [], technologies: [], flights: [] });
+    const sel = $('#accountSelect');
+    sel.innerHTML = summary.accounts.map(a => `<option value="${esc(accountKey(a))}">${esc(a.player_name)} · ${esc(a.universe)}</option>`).join('');
+    state.selectedAccount = sel.value;
+    sel.onchange = async () => {
+      state.selectedAccount = sel.value;
+      state.selectedSnapshot = null;
+      await render();
+    };
+    $('#snapshotSelect').onchange = async e => {
+      state.selectedSnapshot = e.target.value;
+      await render();
+    };
+    document.querySelectorAll('[data-period]').forEach(button => button.onclick = async () => {
+      state.productionHours = Number(button.dataset.period) || 24;
+      document.querySelectorAll('[data-period]').forEach(item => item.classList.toggle('active', item === button));
+      await render();
+    });
+    $('#reloadButton').onclick = () => location.reload();
+    window.addEventListener('resize', () => setColumnWidth(ownRows(state.planets, selectedSnapshot(account())).length));
+    await render();
+  } catch (e) {
+    $('#message').textContent = `Dashboard konnte nicht geladen werden: ${e.message}`;
+    $('#message').classList.remove('hidden');
+  }
+}
+init();
