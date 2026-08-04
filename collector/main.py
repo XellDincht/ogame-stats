@@ -225,7 +225,10 @@ def run() -> int:
             "universe,player_id",
         )
 
-        store.upsert(
+        # Tageshistorie ist unveränderlich: Der erste erfolgreiche Lauf des
+        # Kalendertages bleibt bestehen. Weitere manuelle oder geplante Läufe
+        # dürfen diesen 24h-Vergleichspunkt nicht überschreiben.
+        store.insert_ignore_conflicts(
             "ogame_player_snapshots",
             [
                 {
@@ -241,7 +244,7 @@ def run() -> int:
             "universe,snapshot_date,player_id",
         )
 
-        store.upsert(
+        store.insert_ignore_conflicts(
             "ogame_alliance_snapshots",
             {
                 "universe": universe,

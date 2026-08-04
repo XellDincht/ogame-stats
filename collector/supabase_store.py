@@ -86,6 +86,18 @@ class SupabaseStore:
             prefer="resolution=merge-duplicates,return=minimal",
         )
 
+    def insert_ignore_conflicts(
+        self, table: str, rows: Any, conflict: str
+    ) -> Any:
+        """Insert rows, but keep an already existing conflict row unchanged."""
+        return self._request(
+            "POST",
+            table,
+            params={"on_conflict": conflict},
+            payload=rows,
+            prefer="resolution=ignore-duplicates,return=minimal",
+        )
+
     def update(self, table: str, values: dict[str, Any], **filters: str) -> None:
         self._request(
             "PATCH",
