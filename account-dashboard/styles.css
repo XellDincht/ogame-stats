@@ -74,3 +74,52 @@
   .celestial-images{width:64px;height:57px}
   .celestial-toggle{width:27px;height:27px;min-width:27px}
 }
+
+
+/* Globale Planet-/Mond-Umschaltung */
+.empire-mode-head{vertical-align:top!important}
+.empire-mode-title{font-weight:800;margin-bottom:7px}
+.object-mode-toggle{
+  width:100%;
+  padding:7px 8px;
+  display:grid;
+  grid-template-columns:auto 1fr;
+  grid-template-rows:auto auto;
+  column-gap:7px;
+  align-items:center;
+  text-align:left;
+  background:#17364a;
+  border-color:#3f6f8d;
+}
+.object-mode-toggle:hover{background:#1c435b}
+.object-mode-icon{
+  grid-row:1/3;
+  font-size:20px;
+  line-height:1;
+}
+.object-mode-toggle span:not(.object-mode-icon){font-weight:800}
+.object-mode-toggle small{color:var(--muted);font-size:9px}
+
+.missing-moon-head{
+  background:linear-gradient(180deg,rgba(12,18,25,.9),rgba(5,9,13,.96))!important;
+  color:#65717b;
+}
+.missing-moon-head .ghost-planet-image{
+  opacity:.18;
+  filter:grayscale(1) brightness(.45);
+  box-shadow:none;
+  border-color:#29343c;
+}
+.missing-moon-head .planet-name,
+.missing-moon-head .coords,
+.missing-moon-head .planet-meta{color:#5f6b74}
+.missing-moon-head .celestial-type-badge{
+  background:#161d22;
+  color:#75818a;
+  border-color:#303a41;
+}
+.missing-moon-cell{
+  background:#070b0e!important;
+  color:#313a40!important;
+  opacity:.72;
+}
