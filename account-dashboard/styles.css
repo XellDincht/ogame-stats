@@ -16,9 +16,7 @@
   align-items:center;
   justify-content:center;
 }
-.main-celestial-image{
-  display:block;
-}
+.main-celestial-image{display:block}
 .celestial-toggle{
   position:absolute;
   top:-3px;
@@ -47,10 +45,7 @@
   object-fit:cover;
   border-radius:50%;
 }
-.celestial-toggle span{
-  font-size:17px;
-  line-height:1;
-}
+.celestial-toggle span{font-size:17px;line-height:1}
 .celestial-type-badge{
   position:absolute;
   left:0;
@@ -65,9 +60,7 @@
   text-transform:uppercase;
   letter-spacing:.06em;
 }
-.planet-head.object-moon{
-  background:linear-gradient(180deg,#1b2638,#111b29);
-}
+.planet-head.object-moon{background:linear-gradient(180deg,#1b2638,#111b29)}
 .planet-head.object-moon .main-celestial-image{
   border-color:#91a8c9;
   box-shadow:0 0 15px #a8c4ed44;
