@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>OGame Empire Dashboard</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/ogame-favicon.svg">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -14,7 +15,7 @@
   <main>
     <section id="message" class="message hidden"></section>
     <section class="summary-grid">
-      <article><span>Planeten</span><strong id="planetCount">–</strong></article>
+      <article><span id="objectCountLabel">Planeten / Monde</span><strong id="planetCount">–</strong></article>
       <article class="metal"><span id="metalPeriodLabel">Metall / 24h</span><strong id="totalMetal">–</strong></article>
       <article class="crystal"><span id="crystalPeriodLabel">Kristall / 24h</span><strong id="totalCrystal">–</strong></article>
       <article class="deut"><span id="deutPeriodLabel">Deuterium / 24h</span><strong id="totalDeuterium">–</strong></article>
@@ -27,8 +28,8 @@
       <div class="empire-scroll"><table id="empireTable"><thead id="empireHead"></thead><tbody id="empireBody"></tbody></table></div>
     </section>
   </main>
-  <footer>Empire-Collector · lokale SQLite-Snapshots · statischer Export</footer>
+  <footer>Empire-Collector · Supabase-Snapshots · Planet-/Mondansicht</footer>
   <script src="data-source.js"></script>
-<script src="app.js?v=7.6.2"></script>
+<script src="app.js?v=8.1.0"></script>
 </body>
 </html>
