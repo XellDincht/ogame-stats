@@ -34,3 +34,48 @@
 }
 
 .production-period{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px;color:#9fb6c8}.production-period-tabs{display:flex}.production-period-tabs button{border-radius:0;padding:7px 12px}.production-period-tabs button:first-child{border-radius:7px 0 0 7px}.production-period-tabs button:last-child{border-radius:0 7px 7px 0}.production-period-tabs button+button{margin-left:-1px}.production-period-tabs button.active{background:#5fc8f5;color:#07111f;border-color:#5fc8f5;font-weight:800}.production-grid{grid-template-columns:repeat(4,minmax(0,1fr))}@media(max-width:900px){.production-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:520px){.production-grid{grid-template-columns:1fr}.production-period{align-items:flex-start;flex-direction:column}}
+
+.account-source-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid rgba(117, 173, 255, 0.24);
+  border-radius: 10px;
+  background: rgba(5, 18, 32, 0.72);
+  color: var(--muted, #9fb1c5);
+  font-size: 0.78rem;
+}
+
+.account-source-control span {
+  white-space: nowrap;
+}
+
+.account-source-control select {
+  min-width: 126px;
+  border: 0;
+  background: transparent;
+  color: var(--text, #edf7ff);
+  font: inherit;
+  font-weight: 700;
+  outline: none;
+}
+
+.account-source-control option {
+  color: #101820;
+}
+
+.account-load-error {
+  border-color: rgba(255, 102, 102, 0.55) !important;
+}
+
+@media (max-width: 760px) {
+  .account-source-control {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .account-source-control select {
+    flex: 1;
+  }
+}

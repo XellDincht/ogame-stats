@@ -121,25 +121,65 @@ function renderAccountData() {
   if ($("#accountFooter") && DATA.generated_at) $("#accountFooter").textContent = `Datendatei erzeugt ${new Date(DATA.generated_at).toLocaleString("de-DE")}`;
 }
 
-async function loadAccountData() {
+function setAccountLoadingState(message, isError = false) {
+  const subtitle = $("#accountSubtitle");
+  const main = $("#accountMain");
+  if (subtitle && message) subtitle.textContent = message;
+  if (main) main.classList.toggle("account-load-error", isError);
+}
+
+function syncAccountSourceControl() {
+  const source = window.ogameAccountDataSource?.getSource?.() || "local";
+  const select = $("#accountDataSource");
+  if (select) select.value = source;
+  return source;
+}
+
+async function loadAccountData(options = {}) {
+  const previousPlayerId = options.preservePlayer !== false
+    ? $("#accountPlayer")?.value
+    : null;
+  const source = syncAccountSourceControl();
+  setAccountLoadingState(
+    source === "supabase"
+      ? "Accountdaten werden aus Supabase geladen …"
+      : "Lokale Accountdaten werden geladen …"
+  );
+
   try {
-    const response = await fetch(`account-data.json?v=${Date.now()}`, { cache: "no-store" });
-    if (!response.ok) throw new Error(`account-data.json konnte nicht geladen werden (HTTP ${response.status})`);
-    DATA = await response.json();
+    if (!window.ogameAccountDataSource) {
+      throw new Error("Account-Datenadapter wurde nicht geladen.");
+    }
+    DATA = await window.ogameAccountDataSource.load();
   } catch (error) {
-    DATA = { players: [] };
+    DATA = { players: [], data_source: source };
     console.error("Accountdaten konnten nicht geladen werden:", error);
+    setAccountLoadingState(`Accountdaten konnten nicht geladen werden: ${error.message}`, true);
   }
 
   const players = Array.isArray(DATA?.players) ? DATA.players : [];
   const select = $("#accountPlayer");
   if (select) {
     select.innerHTML = players.length
-      ? players.map(player => `<option value="${player.id}">${esc(player.name)}</option>`).join("")
+      ? players.map(player => `<option value="${esc(player.id)}">${esc(player.name)}</option>`).join("")
       : '<option value="">Keine Accountdaten</option>';
     select.disabled = players.length === 0;
+    if (previousPlayerId && players.some(player => String(player.id) === String(previousPlayerId))) {
+      select.value = String(previousPlayerId);
+    }
   }
+
   renderAccountData();
+
+  if (players.length) {
+    const label = DATA?.data_source === "supabase" ? "Supabase" : "Lokal / JSON";
+    const generated = DATA.generated_at
+      ? new Date(DATA.generated_at).toLocaleString("de-DE")
+      : "unbekannt";
+    if ($("#accountFooter")) {
+      $("#accountFooter").textContent = `Datenquelle: ${label} · Datenstand ${generated}`;
+    }
+  }
 }
 
 function start() {
@@ -153,8 +193,21 @@ function init() {
     renderAccountData();
     showAccountView();
   });
+  $("#accountDataSource")?.addEventListener("change", async event => {
+    const source = event.target.value;
+    try {
+      window.ogameAccountDataSource.setSource(source);
+      await loadAccountData({ preservePlayer: true });
+      showAccountView();
+    } catch (error) {
+      console.error("Datenquelle konnte nicht gewechselt werden:", error);
+      setAccountLoadingState(error.message, true);
+      syncAccountSourceControl();
+    }
+  });
   $("#showAccountStats")?.addEventListener("click", showAccountView);
   $("#showDashboard")?.addEventListener("click", showDashboardView);
+  syncAccountSourceControl();
   start();
 }
 

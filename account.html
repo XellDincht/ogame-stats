@@ -22,7 +22,7 @@
         </header>
         <nav class="toolbar">
             <div class="range-tabs"><a class="nav-link" href="index.html">Allianzstatistik</a><a class="nav-link" href="messages.html">Nachrichten</a>
-                <select id="accountPlayer"></select><button id="showAccountStats" class="nav-link account-view-button"
+                <select id="accountPlayer"></select><label class="account-source-control" for="accountDataSource"><span>Datenquelle</span><select id="accountDataSource"><option value="local">Lokal / JSON</option><option value="supabase">Supabase</option></select></label><button id="showAccountStats" class="nav-link account-view-button"
                     type="button">Accountdaten</button><button id="showDashboard" class="nav-link account-view-button"
                     type="button">Dashboard</button>
             </div><button type="button" data-auth-logout>Abmelden</button>
@@ -35,7 +35,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script src="auth.js"></script>
-  <script src="account.js?v=7.6.1"></script>
+  <script src="account-data-source.js?v=1.0.0"></script>
+  <script src="account.js?v=8.0.0"></script>
 </body>
 
 </html>
