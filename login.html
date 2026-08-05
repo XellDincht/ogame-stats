@@ -1,25 +1,172 @@
 <!doctype html>
 <html lang="de">
+
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#07111f">
-  <title>Hall of Fame · OGame Allianz</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>OGame Allianzstatistik</title>
+
+
+
+<link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="auth.css">
 </head>
+
 <body class="auth-protected">
-  <header class="hero"><div class="hero-inner"><div><p class="eyebrow">Allianzarchiv</p><h1>Hall of Fame</h1><p id="subtitle">Aktive und ehemalige Mitglieder</p></div></div></header>
-  <nav class="toolbar"><div class="range-tabs"><a class="nav-link" href="index.html">← Dashboard</a><a class="nav-link" href="player.html">Spieler-Historie</a><a class="nav-link" href="messages.html">Nachrichten</a><a class="nav-link" href="account.html">Accountdaten</a></div><div class="toolbar-actions"><input id="hofSearch" type="search" placeholder="Mitglied suchen …"></div><button type="button" data-auth-logout>Abmelden</button></nav>
+  <header class="hero">
+    <div class="hero-inner alliance-hero">
+      <img id="allianceLogo" class="alliance-logo" src="ally/Ally_main.png" alt="Allianzlogo">
+      <div><p class="eyebrow">Universe Dashboard</p>
+      <h1 id="title">OGame Allianzstatistik</h1>
+      <p id="subtitle">Daten werden geladen …</p></div>
+    </div>
+  </header>
+  <nav class="toolbar">
+    <div class="range-tabs"><button class="tab active" data-range="1">Tag</button><button class="tab"
+        data-range="7">Woche</button><button class="tab" data-range="30">30 Tage</button><a class="nav-link" href="player.html">Spieler-Historie</a><a class="nav-link" href="hall-of-fame.html">Hall of Fame</a><a class="nav-link" href="messages.html">Nachrichten</a><a id="accountLink" class="nav-link" href="account.html">🔒 Imperiumsübersicht</a></div>
+    <div class="toolbar-actions"><label class="data-source-control" title="Datenquelle der Allianz-Startseite"><span>Datenquelle</span><select id="dataSource"><option value="local">Lokal / JSON</option><option value="supabase">Supabase</option></select></label><span id="dataSourceStatus" class="data-source-status">–</span><input id="search" type="search" placeholder="Spieler suchen …"><select
+        id="playerFilter">
+        <option value="all">Alle Spieler</option>
+      </select><button type="button" data-auth-logout>Abmelden</button></div>
+  </nav>
   <main>
-    <section id="hofSummary" class="summary-grid"></section>
-    <section class="panel"><div class="section-head"><div><h2>Aktive Mitglieder</h2><p class="muted">Derzeit in der Allianz</p></div></div><div id="activeMembers" class="hof-grid"></div></section>
-    <section class="panel"><div class="section-head"><div><h2>Ehemalige Mitglieder</h2><p class="muted">Historie und Statistiken bleiben vollständig erhalten</p></div></div><div id="formerMembers" class="hof-grid"></div></section>
+    <section class="panel alliance-panel"><div class="section-head"><div><h2>Echte Allianzstatistik</h2><p class="muted">Offizielle Allianzwerte aus dem Allianz-Highscore</p></div></div><section id="allianceSummary" class="summary-grid"></section><div class="chart-wrap"><canvas id="allianceChart"></canvas></div></section>
+    <section id="summary" class="summary-grid member-summary"></section>
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <h2>Mitgliederübersicht</h2>
+          <p class="muted">Aktuelle Werte und Veränderungen der Allianzmitglieder</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th rowspan="2">Spieler</th>
+              <th colspan="3">Gesamt</th>
+              <th colspan="3">Ökonomie</th>
+              <th colspan="3">Forschung</th>
+              <th colspan="3">Militär</th>
+              <th colspan="3">Schiffe</th>
+            </tr>
+            <tr>
+              <th>Wert</th><th>Δ</th><th>%</th>
+              <th>Wert</th><th>Δ</th><th>%</th>
+              <th>Wert</th><th>Δ</th><th>%</th>
+              <th>Wert</th><th>Δ</th><th>%</th>
+              <th>Wert</th><th>Δ</th><th>%</th>
+            </tr>
+          </thead>
+          <tbody id="allianceBody"></tbody>
+        </table>
+      </div>
+    </section>
+    <section>
+      <div class="section-head">
+        <div>
+          <h2>Spielerkarten</h2>
+          <p class="muted">Kompakter Überblick pro Mitglied</p>
+        </div>
+      </div>
+      <div id="playerCards" class="player-grid"></div>
+    </section>
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <h2>Spielervergleich</h2>
+          <p class="muted">Zwei Spieler direkt gegenüberstellen</p>
+        </div>
+        <div class="compare-controls"><select id="compareA"></select><span class="versus">VS</span><select
+            id="compareB"></select></div>
+      </div>
+      <div id="compareCards" class="compare-grid"></div>
+      <div class="chart-wrap"><canvas id="compareChart"></canvas></div>
+    </section>
+    <section class="charts-grid">
+      <article class="panel">
+        <div class="section-head">
+          <h2>Punkteverlauf</h2>
+        </div>
+        <div class="chart-wrap"><canvas id="totalChart"></canvas></div>
+      </article>
+      <article class="panel">
+        <div class="section-head">
+          <h2>Militärpunkte</h2>
+        </div>
+        <div class="chart-wrap"><canvas id="militaryChart"></canvas></div>
+      </article>
+      <article class="panel">
+        <div class="section-head">
+          <h2>Schiffsanzahl</h2>
+        </div>
+        <div class="chart-wrap"><canvas id="shipsChart"></canvas></div>
+      </article>
+      <article class="panel">
+        <div class="section-head">
+          <h2>Forschung</h2>
+        </div>
+        <div class="chart-wrap"><canvas id="researchChart"></canvas></div>
+      </article>
+      <article class="panel">
+        <div class="section-head">
+          <h2>Wirtschaft</h2>
+        </div>
+        <div class="chart-wrap"><canvas id="economyChart"></canvas></div>
+      </article>
+    </section>
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <h2>Expeditionen</h2>
+          <p class="muted">Manuell übermittelte Funde und Verluste</p>
+        </div>
+      </div>
+      <div id="expoSummary" class="summary-grid expo-summary"></div>
+      <div class="expo-layout">
+        <div>
+          <h3>Fundarten</h3>
+          <div id="expoCategories" class="expo-categories"></div>
+        </div>
+        <div>
+          <h3>Gefundene Schiffe</h3>
+          <div id="expoShips" class="expo-categories"></div>
+          <h3 class="expo-recent-title">Letzte Expeditionen</h3>
+          <div class="table-wrap">
+            <table class="expo-table">
+              <thead>
+                <tr>
+                  <th>Zeit</th>
+                  <th>Spieler</th>
+                  <th>Ergebnis</th>
+                  <th>Gewinn</th>
+                  <th>Verlust</th>
+                  <th>Netto</th>
+                </tr>
+              </thead>
+              <tbody id="expoBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section>
+      <div class="section-head">
+        <div>
+          <h2>Toplisten</h2>
+          <p class="muted">Beste Entwicklung im gewählten Zeitraum</p>
+        </div>
+      </div>
+      <div id="rankings" class="ranking-grid"></div>
+    </section>
   </main>
   <footer id="footer">Wird geladen …</footer>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script src="auth.js"></script>
-  <script src="hall-of-fame.js"></script>
+  <script src="ogame-data-source.js"></script>
+  <script src="app.js"></script>
 </body>
+
 </html>

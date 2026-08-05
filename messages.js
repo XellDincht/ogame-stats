@@ -1,33 +1,35 @@
-(() => {
-  const form = document.querySelector("#loginForm");
-  const status = document.querySelector("#loginStatus");
-  const button = document.querySelector("#loginButton");
-  const next = new URLSearchParams(location.search).get("next") || "index.html";
-  const safeNext = /^(?!https?:|\/\/)[a-zA-Z0-9._?=#&%/-]+$/.test(next) ? next : "index.html";
-
-  async function redirectExistingSession() {
-    const { data } = await window.ogameSupabase.auth.getSession();
-    if (data.session) location.replace(safeNext);
-  }
-
-  form?.addEventListener("submit", async event => {
-    event.preventDefault();
-    status.textContent = "";
-    button.disabled = true;
-    button.textContent = "Anmeldung läuft …";
-    const email = document.querySelector("#email").value.trim();
-    const password = document.querySelector("#password").value;
-    const { error } = await window.ogameSupabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      status.textContent = error.message === "Invalid login credentials"
-        ? "E-Mail oder Passwort ist falsch."
-        : `Anmeldung fehlgeschlagen: ${error.message}`;
-      button.disabled = false;
-      button.textContent = "Anmelden";
-      return;
-    }
-    location.replace(safeNext);
-  });
-
-  redirectExistingSession();
-})();
+.message-editor { display:grid; gap:1rem; }
+.message-editor input,.message-editor textarea { width:100%; box-sizing:border-box; }
+.message-editor textarea { min-height:230px; resize:vertical; line-height:1.55; }
+.message-editor-actions { display:flex; flex-wrap:wrap; gap:.75rem; align-items:center; }
+.message-paste-hint { color:var(--muted,#9fb0c6); font-size:.84rem; }
+.message-image-preview { max-width:300px; max-height:200px; border-radius:12px; object-fit:contain; border:1px solid rgba(255,255,255,.1); }
+.message-list { display:grid; gap:1.1rem; }
+.message-card { padding:1.2rem; }
+.moon-card { overflow:hidden; position:relative; background:linear-gradient(145deg,rgba(15,34,55,.96),rgba(8,20,35,.96)); border:1px solid rgba(96,175,255,.18); }
+.moon-card::before { content:""; position:absolute; inset:0 auto 0 0; width:4px; background:linear-gradient(#6fb9ff,#8c7cff); }
+.moon-card-top { display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; }
+.moon-card h3 { margin:.2rem 0 0; font-size:1.35rem; }
+.moon-kicker { color:#7fc2ff; text-transform:uppercase; letter-spacing:.11em; font-size:.72rem; font-weight:700; }
+.moon-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.75rem; margin:1rem 0; }
+.moon-summary-item { min-width:0; padding:.75rem .85rem; border:1px solid rgba(255,255,255,.08); border-radius:12px; background:rgba(255,255,255,.035); }
+.moon-summary-item>span,.moon-info>span { display:block; color:var(--muted,#9fb0c6); font-size:.75rem; text-transform:uppercase; letter-spacing:.08em; margin-bottom:.42rem; }
+.moon-summary-item strong { overflow-wrap:anywhere; }
+.moon-route { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; font-weight:700; }
+.moon-route b { color:#7fc2ff; }
+.moon-badges { display:flex; flex-wrap:wrap; gap:.4rem; }
+.moon-badge { display:inline-flex; align-items:center; min-height:26px; padding:.18rem .6rem; border-radius:999px; background:rgba(92,166,255,.16); border:1px solid rgba(111,185,255,.25); font-size:.86rem; font-weight:700; }
+.moon-info { padding:.9rem 1rem; border-radius:12px; background:rgba(0,0,0,.16); }
+.moon-info p { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.55; }
+.message-meta { margin-top:.9rem; color:var(--muted,#9fb0c6); font-size:.82rem; }
+.message-screenshot-button { margin-top:1rem; display:inline-flex; align-items:center; gap:.5rem; min-height:38px; padding:.45rem .8rem; border-radius:10px; border:1px solid rgba(111,185,255,.28); background:rgba(92,166,255,.12); color:inherit; cursor:pointer; font-weight:700; }
+.message-screenshot-button:hover { background:rgba(92,166,255,.2); }
+.message-screenshot-button span:first-child { font-size:1.1rem; color:#7fc2ff; }
+.message-actions { display:flex; gap:.5rem; flex-wrap:wrap; }
+.message-empty { text-align:center; padding:2rem; }
+.image-modal { position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:1000; display:grid; place-items:center; padding:1rem; }
+.image-modal[hidden] { display:none; }
+.image-modal img { max-width:96vw; max-height:92vh; object-fit:contain; }
+.image-modal button { position:absolute; top:1rem; right:1rem; }
+@media (max-width:850px){.moon-summary{grid-template-columns:1fr 1fr}.moon-summary-item:last-child{grid-column:1/-1}}
+@media (max-width:650px){.moon-card-top{display:block}.message-actions{margin-top:.75rem}.moon-summary{grid-template-columns:1fr}.moon-summary-item:last-child{grid-column:auto}}

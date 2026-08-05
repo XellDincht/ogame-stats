@@ -1,9 +1,43 @@
-const $=s=>document.querySelector(s);
-const fmt=n=>n==null?"–":new Intl.NumberFormat("de-DE").format(n);
-const date=v=>v?new Date(v).toLocaleDateString("de-DE"):"–";
-let D=null;
-function latest(p){return p.snapshots?.at(-1)||{}}
-function card(p){const m=p.membership||{},l=latest(p);return `<article class="player-card hof-card"><div class="player-meta"><span class="member-status ${p.is_active?'active':'former'}">${p.is_active?'Aktiv':'Ehemalig'}</span><a href="player.html?id=${p.id}">Historie →</a></div><h3>${p.name}</h3><div class="metric-row"><span>Beitritt erfasst</span><strong>${date(m.joined_at||p.first_seen)}</strong></div><div class="metric-row"><span>${p.is_active?'Mitglied seit':'Austritt erfasst'}</span><strong>${p.is_active?`${fmt(p.membership_days)} Tage`:date(m.left_at)}</strong></div><div class="metric-row"><span>Zeit in der Allianz</span><strong>${fmt(p.membership_days)} Tage</strong></div><div class="metric-row"><span>Letzte Gesamtpunkte</span><strong>${fmt(l.total_points)}</strong></div><div class="metric-row"><span>Letzter Rang</span><strong>${fmt(l.total_rank)}</strong></div><div class="metric-row"><span>Letzter Snapshot</span><strong>${l.date||'–'}</strong></div></article>`}
-function render(){const q=$("#hofSearch").value.trim().toLowerCase(),all=D.players.filter(p=>p.name.toLowerCase().includes(q)),active=all.filter(p=>p.is_active),former=all.filter(p=>!p.is_active);$("#activeMembers").innerHTML=active.map(card).join('')||'<p class="muted">Keine aktiven Mitglieder gefunden.</p>';$("#formerMembers").innerHTML=former.map(card).join('')||'<p class="muted">Noch keine ehemaligen Mitglieder erfasst.</p>';$("#hofSummary").innerHTML=`<article class="summary-card"><span class="summary-label">Aktiv</span><strong class="summary-value">${active.length}</strong></article><article class="summary-card"><span class="summary-label">Ehemalig</span><strong class="summary-value">${former.length}</strong></article><article class="summary-card"><span class="summary-label">Gesamt erfasst</span><strong class="summary-value">${all.length}</strong></article>`}
-fetch('data.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{D=j;$("#subtitle").textContent=`${D.alliance?.tag?`[${D.alliance.tag}] · `:''}Aktive und bisherige Mitglieder`;$("#footer").textContent=`Erzeugt ${new Date(D.meta.generated_at).toLocaleString('de-DE')}`;render()}).catch(e=>$("#subtitle").textContent=`Fehler: ${e.message}`);
-$("#hofSearch").addEventListener('input',render);
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#07111f">
+  <title>Mondversuch-Archiv · OGame</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="auth.css">
+  <link rel="stylesheet" href="messages.css">
+</head>
+<body class="auth-protected">
+  <header class="hero"><div class="hero-inner"><div><p class="eyebrow">Gemeinsamer Allianzbereich</p><h1>Mondversuch-Archiv</h1><p>OGame-Rundmails einfügen und automatisch übersichtlich archivieren.</p></div></div></header>
+  <nav class="toolbar">
+    <div class="range-tabs"><a class="nav-link" href="index.html">Allianzstatistik</a><a class="nav-link" href="player.html">Spieler-Historie</a><a class="nav-link" href="hall-of-fame.html">Hall of Fame</a><a class="nav-link" href="account.html">Accountdaten</a></div>
+    <div class="auth-user-actions"><span id="authUserName" class="auth-user-name"></span><button class="auth-logout" data-auth-logout type="button">Abmelden</button></div>
+  </nav>
+  <main>
+    <section class="panel">
+      <div class="section-head"><div><h2 id="editorHeading">Mondversuch archivieren</h2><p class="muted">Die komplette OGame-Rundmail einfügen. Ein mitkopierter Screenshot wird automatisch erkannt; alternativ kann er mit Strg+V in dieses Feld eingefügt werden.</p></div></div>
+      <form id="messageForm" class="message-editor">
+        <textarea id="messageContent" required placeholder="Rundmail von&#10;Savio&#10;Von:&#10;Savio&#10;02.08.2026 21:53:32&#10;&#10;Mondversuch #10 Von 1.115.9 M (Savio) --> auf 1.120.4 (Xell). …"></textarea>
+        <div class="message-editor-actions">
+          <label class="nav-link">Screenshot auswählen<input id="messageImage" type="file" accept="image/png,image/jpeg,image/webp" hidden></label><span id="pasteHint" class="message-paste-hint">Bild auch per Strg+V einfügbar</span>
+          <button id="saveMessage" type="submit">Mondversuch speichern</button>
+          <button id="cancelEdit" type="button" hidden>Bearbeiten abbrechen</button>
+          <span id="messageStatus" class="muted"></span>
+        </div>
+        <img id="imagePreview" class="message-image-preview" alt="Screenshot-Vorschau" hidden>
+      </form>
+    </section>
+    <section class="panel">
+      <div class="section-head"><div><h2>Gespeicherte Mondversuche</h2><p class="muted">Neueste Einträge zuerst</p></div></div>
+      <div id="messageList" class="message-list"><p class="muted">Nachrichten werden geladen …</p></div>
+    </section>
+  </main>
+  <div id="imageModal" class="image-modal" hidden><button id="closeImageModal" type="button">Schließen</button><img id="modalImage" alt="Screenshot groß"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="auth.js"></script>
+  <script src="messages.js"></script>
+</body>
+</html>

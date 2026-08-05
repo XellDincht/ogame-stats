@@ -1,336 +1,287 @@
 (() => {
-  const BUCKET = "message_images";
-  const $ = selector => document.querySelector(selector);
-  const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  let auth = null;
-  let editing = null;
-  let selectedFile = null;
-  let objectUrl = null;
-  let playerAliasMap = new Map();
+  "use strict";
 
-  function status(text, error = false) {
-    const node = $("#messageStatus");
-    node.textContent = text;
-    node.classList.toggle("negative", error);
+  const STORAGE_KEY = "ogame.dashboard.dataSource";
+  const PAGE_SIZE = 1000;
+  const snapshotCache = new Map();
+  const snapshotMetaBySourceId = new Map();
+
+  function source() {
+    return "supabase";
   }
 
-  function displayName() {
-    return auth?.profile?.ogame_name || auth?.profile?.display_name || auth?.user?.email || "Unbekannt";
+  async function localJson(path) {
+    const response = await fetch(path, { cache: "no-store" });
+    if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
+    return response.json();
   }
 
-  function normalizePlayerName(value) {
-    return String(value || "").trim().replace(/\s+/g, " ");
+  function client() {
+    const value = window.parent?.ogameSupabase || window.ogameSupabase;
+    if (!value) throw new Error("Supabase-Client der Hauptseite ist nicht verfügbar.");
+    return value;
   }
 
-
-  function playerKey(value) {
-    return normalizePlayerName(value).toLocaleLowerCase("de-DE");
+  function err(error) {
+    return [error?.message, error?.details, error?.hint].filter(Boolean).join(" · ") || "Unbekannter Supabase-Fehler";
   }
 
-  function resolvePlayerName(value) {
-    const normalized = normalizePlayerName(value);
-    return playerAliasMap.get(playerKey(normalized)) || normalized;
+  async function rows(query, label) {
+    const { data, error } = await query;
+    if (error) throw new Error(`${label}: ${err(error)}`);
+    return data || [];
   }
 
-  async function loadPlayers() {
-    const { data, error } = await window.ogameSupabase
-      .from("players")
-      .select("display_name, aliases");
-
-    if (error) {
-      console.warn("Spieler-Aliase konnten nicht geladen werden:", error.message);
-      playerAliasMap = new Map();
-      return;
+  async function pagedBySnapshot(table, select, dbSnapshotId, label) {
+    const result = [];
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const page = await rows(
+        client().from(table).select(select).eq("snapshot_id", dbSnapshotId).range(from, from + PAGE_SIZE - 1),
+        label
+      );
+      result.push(...page);
+      if (page.length < PAGE_SIZE) break;
     }
+    return result;
+  }
 
-    const nextMap = new Map();
-    for (const player of data || []) {
-      const display = normalizePlayerName(player.display_name);
-      if (!display) continue;
+  async function loadSupabaseMetadata() {
+    const sb = client();
+    const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+    if (sessionError) throw new Error(`Supabase-Session: ${sessionError.message}`);
+    if (!sessionData?.session) throw new Error("Keine gültige Supabase-Anmeldung vorhanden.");
 
-      // Auch der Anzeigename selbst gilt automatisch als Alias.
-      const aliases = [display, ...(Array.isArray(player.aliases) ? player.aliases : [])];
-      for (const alias of aliases) {
-        const key = playerKey(alias);
-        if (key) nextMap.set(key, display);
+    const accounts = await rows(
+      sb.from("ogame_accounts")
+        .select("id, ogame_player_id, current_player_name, universe, is_active")
+        .eq("is_active", true)
+        .order("current_player_name"),
+      "Accounts"
+    );
+
+    const snapshots = [];
+    snapshotMetaBySourceId.clear();
+    for (const account of accounts) {
+      const found = await rows(
+        sb.from("ogame_account_snapshots")
+          .select("id, account_id, source_snapshot_id, created_at, imported_at, collector_version")
+          .eq("account_id", account.id)
+          .order("created_at", { ascending: true }),
+        `Snapshot-Liste für ${account.current_player_name}`
+      );
+      for (const row of found) {
+        const meta = {
+          db_snapshot_id: row.id,
+          snapshot_id: row.source_snapshot_id,
+          created_at: row.created_at,
+          imported_at: row.imported_at,
+          player_id: account.ogame_player_id,
+          player_name: account.current_player_name,
+          universe: account.universe,
+          collector_version: row.collector_version,
+          account_id: account.id
+        };
+        snapshots.push(meta);
+        snapshotMetaBySourceId.set(meta.snapshot_id, meta);
       }
     }
-    playerAliasMap = nextMap;
+
+    const latestByAccount = new Map();
+    for (const snapshot of snapshots) {
+      const current = latestByAccount.get(snapshot.account_id);
+      if (!current || new Date(snapshot.created_at) > new Date(current.created_at)) {
+        latestByAccount.set(snapshot.account_id, snapshot);
+      }
+    }
+
+    const summary = {
+      export_version: "supabase-lazy-v1",
+      accounts: accounts.map(account => {
+        const latest = latestByAccount.get(account.id);
+        return {
+          snapshot_id: latest?.snapshot_id || null,
+          created_at: latest?.created_at || null,
+          player_id: account.ogame_player_id,
+          player_name: account.current_player_name,
+          universe: account.universe,
+          collector_version: latest?.collector_version || null,
+          planet_count: null,
+          production_per_hour: { metal: 0, crystal: 0, deuterium: 0 }
+        };
+      }).filter(account => account.snapshot_id)
+    };
+
+    return { summary, snapshots, planets: [], production: [], technologies: [], flights: [], lazy: true };
   }
 
-  function parseMoonAttempt(rawText) {
-    const raw = String(rawText || "").replace(/\r/g, "").trim();
-    const lines = raw.split("\n").map(line => line.trim()).filter(Boolean);
-
-    const titleMatch = raw.match(/Mondversuch\s*#\s*(\d+)/i);
-    const dateMatch = raw.match(/(\d{2}\.\d{2}\.\d{4})\s+(\d{2}:\d{2}:\d{2})/);
-    const routeMatch = raw.match(/Von\s+([0-9]+[.:][0-9]+[.:][0-9]+)(?:\s+M)?\s*\(([^)]+)\)\s*-+>\s*auf\s+([0-9]+[.:][0-9]+[.:][0-9]+)(?:\s+M)?\s*\(([^)]+)\)/i);
-    const senderMatch = raw.match(/Rundmail\s+von\s*\n\s*([^\n]+)/i) || raw.match(/Von:\s*\n\s*([^\n]+)/i);
-
-    let info = raw;
-    if (titleMatch) {
-      const titleIndex = raw.search(/Mondversuch\s*#\s*\d+/i);
-      if (titleIndex >= 0) info = raw.slice(titleIndex);
+  async function loadSupabaseSnapshot(sourceSnapshotId) {
+    if (snapshotCache.has(sourceSnapshotId)) return snapshotCache.get(sourceSnapshotId);
+    const sb = client();
+    let meta = snapshotMetaBySourceId.get(sourceSnapshotId);
+    if (!meta) {
+      const found = await rows(
+        sb.from("ogame_account_snapshots")
+          .select("id, account_id, source_snapshot_id, created_at, imported_at, collector_version, ogame_accounts!inner(ogame_player_id, current_player_name, universe)")
+          .eq("source_snapshot_id", sourceSnapshotId)
+          .limit(1),
+        "Snapshot"
+      );
+      const row = found[0];
+      if (!row) throw new Error(`Snapshot nicht gefunden: ${sourceSnapshotId}`);
+      const account = row.ogame_accounts;
+      meta = {
+        db_snapshot_id: row.id,
+        snapshot_id: row.source_snapshot_id,
+        created_at: row.created_at,
+        imported_at: row.imported_at,
+        player_id: account.ogame_player_id,
+        player_name: account.current_player_name,
+        universe: account.universe,
+        collector_version: row.collector_version,
+        account_id: row.account_id
+      };
+      snapshotMetaBySourceId.set(sourceSnapshotId, meta);
     }
-    if (routeMatch) {
-      const routeText = routeMatch[0];
-      const routeIndex = info.indexOf(routeText);
-      if (routeIndex >= 0) info = info.slice(routeIndex + routeText.length);
+
+    const dbId = meta.db_snapshot_id;
+    const [objectRows, technologyRows, flightRows] = await Promise.all([
+      pagedBySnapshot(
+        "ogame_account_objects",
+        "id, snapshot_id, source_object_id, object_type, object_order, name, coordinates, image_url, background_image_url, lifeform_name, diameter_km, fields_used, fields_total, temperature_min_c, temperature_max_c",
+        dbId,
+        "Objekte"
+      ),
+      pagedBySnapshot(
+        "ogame_account_technologies",
+        "snapshot_id, object_id, category, technology_id, name, value",
+        dbId,
+        "Technologien"
+      ),
+      pagedBySnapshot(
+        "ogame_account_flights",
+        "snapshot_id, source_flight_id, mission, origin_coordinates, destination_coordinates, arrival_text, is_returning, ship_count, ships, raw_text",
+        dbId,
+        "Flüge"
+      )
+    ]);
+
+    const objectIds = objectRows.map(row => row.id);
+    const productionRows = objectIds.length
+      ? await rows(
+          sb.from("ogame_account_production")
+            .select("object_id, metal_per_hour, crystal_per_hour, deuterium_per_hour, energy_available, energy_production, metal_current, crystal_current, deuterium_current, metal_storage, crystal_storage, deuterium_storage, source")
+            .in("object_id", objectIds),
+          "Produktion"
+        )
+      : [];
+
+    const objectById = new Map(objectRows.map(row => [row.id, row]));
+    const common = {
+      snapshot_id: meta.snapshot_id,
+      created_at: meta.created_at,
+      player_name: meta.player_name,
+      universe: meta.universe
+    };
+
+    const planets = objectRows.map(row => ({
+      ...common,
+      planet_id: row.source_object_id,
+      name: row.name,
+      coordinates: row.coordinates ? `[${String(row.coordinates).replace(/[\[\]]/g, "")}]` : "",
+      object_type: row.object_type,
+      planet_order: row.object_order,
+      image_url: row.image_url,
+      background_image_url: row.background_image_url,
+      lifeform_name: row.lifeform_name,
+      diameter_km: row.diameter_km,
+      fields_used: row.fields_used,
+      fields_total: row.fields_total,
+      temperature_min_c: row.temperature_min_c,
+      temperature_max_c: row.temperature_max_c
+    }));
+
+    const production = productionRows.map(row => {
+      const object = objectById.get(row.object_id);
+      return {
+        ...common,
+        planet_id: object?.source_object_id ?? null,
+        planet_name: object?.name ?? null,
+        coordinates: object?.coordinates ? `[${String(object.coordinates).replace(/[\[\]]/g, "")}]` : "",
+        ...row
+      };
+    });
+
+    const technologies = technologyRows.map(row => {
+      const object = row.object_id ? objectById.get(row.object_id) : null;
+      return {
+        ...common,
+        planet_id: object?.source_object_id ?? null,
+        planet_name: object?.name ?? null,
+        coordinates: object?.coordinates ? `[${String(object.coordinates).replace(/[\[\]]/g, "")}]` : null,
+        category: row.category,
+        technology_id: row.technology_id,
+        name: row.name,
+        value: row.value
+      };
+    });
+
+    const flights = flightRows.map(row => ({
+      ...common,
+      flight_id: row.source_flight_id,
+      mission: row.mission,
+      origin_coordinates: row.origin_coordinates,
+      destination_coordinates: row.destination_coordinates,
+      arrival: row.arrival_text,
+      is_returning: row.is_returning ? 1 : 0,
+      ship_count: row.ship_count,
+      ships: row.ships || {},
+      raw_text: row.raw_text
+    }));
+
+    const result = { snapshot: meta, planets, production, technologies, flights };
+    snapshotCache.set(sourceSnapshotId, result);
+    return result;
+  }
+
+  let localDataPromise = null;
+  async function loadLocal() {
+    if (!localDataPromise) {
+      localDataPromise = Promise.all(
+        ["summary", "snapshots", "planets", "production", "technologies", "active_flights"]
+          .map(name => localJson(`data/${name}.json`))
+      ).then(([summary, snapshots, planets, production, technologies, flights]) => ({
+        summary, snapshots, planets, production, technologies, flights, lazy: false
+      }));
     }
-    info = info.replace(/^\s*[.\-–—:]+\s*/, "").trim();
+    return localDataPromise;
+  }
 
-    const sender = normalizePlayerName(routeMatch?.[2] || senderMatch?.[1]);
-    const receiver = normalizePlayerName(routeMatch?.[4]);
-    const participants = [...new Set([sender, receiver].filter(Boolean))];
-
+  async function loadLocalSnapshot(sourceSnapshotId) {
+    const all = await loadLocal();
+    const snapshot = all.snapshots.find(row => row.snapshot_id === sourceSnapshotId);
     return {
-      isMoonAttempt: Boolean(titleMatch),
-      title: titleMatch ? `Mondversuch #${titleMatch[1]}` : "Mondversuch",
-      number: titleMatch?.[1] || null,
-      date: dateMatch ? `${dateMatch[1]} ${dateMatch[2]}` : null,
-      sourceCoords: routeMatch?.[1]?.replace(/\./g, ":") || null,
-      targetCoords: routeMatch?.[3]?.replace(/\./g, ":") || null,
-      sender,
-      receiver,
-      participants,
-      info: info || lines.at(-1) || raw,
-      raw
+      snapshot,
+      planets: all.planets.filter(row => row.snapshot_id === sourceSnapshotId),
+      production: all.production.filter(row => row.snapshot_id === sourceSnapshotId),
+      technologies: all.technologies.filter(row => row.snapshot_id === sourceSnapshotId),
+      flights: all.flights.filter(row => row.snapshot_id === sourceSnapshotId)
     };
   }
 
-  function setSelectedImage(file, sourceLabel = "Screenshot") {
-    if (!file) return false;
-    if (!file.type?.startsWith("image/")) {
-      status("Aus der Zwischenablage wurde keine Bilddatei erkannt.", true);
-      return false;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      status("Das Bild darf höchstens 5 MB groß sein.", true);
-      return false;
-    }
-    selectedFile = file;
-    if (objectUrl) URL.revokeObjectURL(objectUrl);
-    objectUrl = URL.createObjectURL(file);
-    $("#imagePreview").src = objectUrl;
-    $("#imagePreview").hidden = false;
-    status(`${sourceLabel} erkannt und zum Upload vorgemerkt.`);
-    return true;
+  async function load() {
+    return loadSupabaseMetadata();
   }
 
-  function clipboardImageFile(event) {
-    const data = event.clipboardData;
-    if (!data) return null;
-
-    // Variante 1: Clipboard-Items (Chrome/Edge, Snipping Tool, Bildbearbeitung)
-    for (const item of [...(data.items || [])]) {
-      if (item.kind !== "file") continue;
-      const blob = item.getAsFile();
-      if (!blob) continue;
-      const type = blob.type || item.type || "image/png";
-      if (!type.startsWith("image/")) continue;
-      const extension = type === "image/webp" ? "webp" : type === "image/jpeg" ? "jpg" : "png";
-      return new File([blob], `screenshot-${Date.now()}.${extension}`, {
-        type,
-        lastModified: Date.now()
-      });
-    }
-
-    // Variante 2: Clipboard-Files (wird von manchen Windows-Quellen verwendet)
-    for (const file of [...(data.files || [])]) {
-      const type = file.type || "image/png";
-      if (!type.startsWith("image/")) continue;
-      const extension = type === "image/webp" ? "webp" : type === "image/jpeg" ? "jpg" : "png";
-      return new File([file], file.name || `screenshot-${Date.now()}.${extension}`, {
-        type,
-        lastModified: file.lastModified || Date.now()
-      });
-    }
-
-    return null;
+  async function loadSnapshot(sourceSnapshotId) {
+    return loadSupabaseSnapshot(sourceSnapshotId);
   }
 
-  function handleClipboardImage(event) {
-    const file = clipboardImageFile(event);
-    if (!file) {
-      console.debug("[Mondarchiv] Kein Bild im Paste-Event erkannt", {
-        itemTypes: [...(event.clipboardData?.items || [])].map(item => ({ kind: item.kind, type: item.type })),
-        files: [...(event.clipboardData?.files || [])].map(file => ({ name: file.name, type: file.type, size: file.size }))
-      });
-      return;
-    }
-
-    setSelectedImage(file, "Screenshot aus der Zwischenablage");
-    // Vorhandener Text darf parallel weiterhin normal eingefügt werden.
-  }
-
-  function resetForm() {
-    editing = null;
-    selectedFile = null;
-    if (objectUrl) URL.revokeObjectURL(objectUrl);
-    objectUrl = null;
-    $("#messageForm").reset();
-    $("#imagePreview").hidden = true;
-    $("#editorHeading").textContent = "Mondversuch archivieren";
-    $("#saveMessage").textContent = "Mondversuch speichern";
-    $("#cancelEdit").hidden = true;
-    status("");
-  }
-
-  async function signedImageUrl(path) {
-    if (!path) return null;
-    const { data, error } = await window.ogameSupabase.storage.from(BUCKET).createSignedUrl(path, 3600);
-    if (error) { console.warn("Bild-URL fehlgeschlagen:", error.message); return null; }
-    return data.signedUrl;
-  }
-
-  async function loadProfileNames(authorIds) {
-    const uniqueIds = [...new Set(authorIds.filter(Boolean))];
-    if (!uniqueIds.length) return new Map();
-    const { data, error } = await window.ogameSupabase
-      .from("profiles")
-      .select("id, display_name, ogame_name")
-      .in("id", uniqueIds);
-    if (error) {
-      console.warn("Profilnamen konnten nicht geladen werden:", error.message);
-      return new Map();
-    }
-    return new Map((data || []).map(profile => [profile.id, profile.ogame_name || profile.display_name]));
-  }
-
-  function renderMessageCard(item, profileNames) {
-    const parsed = parseMoonAttempt(item.content);
-    const own = item.author_id === auth.user.id;
-    const admin = auth.profile?.role === "admin";
-    const canChange = own || admin;
-    const archiveAuthor = profileNames.get(item.author_id) || item.author_name || "Unbekannt";
-    const dateLabel = parsed.date || new Date(item.created_at).toLocaleString("de-DE");
-    const route = parsed.sourceCoords && parsed.targetCoords
-      ? `<div class="moon-route"><span>${esc(parsed.sourceCoords)}</span><b aria-hidden="true">→</b><span>${esc(parsed.targetCoords)}</span></div>`
-      : "";
-    const resolvedParticipants = [...new Set(parsed.participants.map(resolvePlayerName).filter(Boolean))];
-    const participantBadges = resolvedParticipants.length
-      ? `<div class="moon-badges">${resolvedParticipants.map(name => `<span class="moon-badge">${esc(name)}</span>`).join("")}</div>`
-      : "";
-
-    return `<article class="panel message-card moon-card" data-id="${esc(item.id)}">
-      <div class="moon-card-top">
-        <div>
-          <div class="moon-kicker">Mondversuch-Archiv</div>
-          <h3>${esc(parsed.title || item.title || "Mondversuch")}</h3>
-        </div>
-        ${canChange ? `<div class="message-actions"><button type="button" data-edit>Bearbeiten</button><button type="button" data-delete>Löschen</button></div>` : ""}
-      </div>
-      <div class="moon-summary">
-        <div class="moon-summary-item"><span>Zeitpunkt</span><strong>${esc(dateLabel)}</strong></div>
-        ${route ? `<div class="moon-summary-item"><span>Route</span>${route}</div>` : ""}
-        ${participantBadges ? `<div class="moon-summary-item"><span>Beteiligte</span>${participantBadges}</div>` : ""}
-      </div>
-      <div class="moon-info"><span>Info</span><p>${esc(parsed.info)}</p></div>
-      ${item.imageUrl ? `<button class="message-screenshot-button" type="button" data-image data-image-url="${esc(item.imageUrl)}" aria-label="Screenshot öffnen" title="Screenshot öffnen"><span aria-hidden="true">▣</span><span>Screenshot</span></button>` : ""}
-      <div class="message-meta">Archiviert von <strong>${esc(archiveAuthor)}</strong> · ${new Date(item.created_at).toLocaleString("de-DE")}${item.updated_at ? " · bearbeitet" : ""}</div>
-    </article>`;
-  }
-
-  async function loadMessages() {
-    const list = $("#messageList");
-    const { data, error } = await window.ogameSupabase
-      .from("alliance_messages")
-      .select("id, created_at, title, content, author_id, author_name, image_path, updated_at")
-      .order("created_at", { ascending: false });
-    if (error) {
-      list.innerHTML = `<p class="negative">Nachrichten konnten nicht geladen werden: ${esc(error.message)}</p>`;
-      return;
-    }
-    if (!data?.length) {
-      list.innerHTML = '<p class="message-empty muted">Noch keine Mondversuche gespeichert.</p>';
-      return;
-    }
-    const profileNames = await loadProfileNames(data.map(item => item.author_id));
-    const withUrls = await Promise.all(data.map(async item => ({ ...item, imageUrl: await signedImageUrl(item.image_path) })));
-    list.innerHTML = withUrls.map(item => renderMessageCard(item, profileNames)).join("");
-    list.querySelectorAll("[data-edit]").forEach(button => button.addEventListener("click", () => beginEdit(withUrls.find(x => x.id === button.closest("[data-id]").dataset.id))));
-    list.querySelectorAll("[data-delete]").forEach(button => button.addEventListener("click", () => deleteMessage(withUrls.find(x => x.id === button.closest("[data-id]").dataset.id))));
-    list.querySelectorAll("[data-image]").forEach(button => button.addEventListener("click", () => openImage(button.dataset.imageUrl)));
-  }
-
-  function beginEdit(item) {
-    editing = item;
-    $("#messageContent").value = item.content || "";
-    $("#editorHeading").textContent = "Mondversuch bearbeiten";
-    $("#saveMessage").textContent = "Änderungen speichern";
-    $("#cancelEdit").hidden = false;
-    if (item.imageUrl) { $("#imagePreview").src = item.imageUrl; $("#imagePreview").hidden = false; }
-    scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  async function uploadImage(messageId) {
-    if (!selectedFile) return editing?.image_path || null;
-    const ext = (selectedFile.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-    const path = `${auth.user.id}/${messageId}/${Date.now()}.${ext}`;
-    const { error } = await window.ogameSupabase.storage.from(BUCKET).upload(path, selectedFile, { upsert: false, contentType: selectedFile.type });
-    if (error) throw error;
-    if (editing?.image_path) await window.ogameSupabase.storage.from(BUCKET).remove([editing.image_path]);
-    return path;
-  }
-
-  async function saveMessage(event) {
-    event.preventDefault();
-    const content = $("#messageContent").value.trim();
-    if (!content) return status("Bitte die kopierte OGame-Rundmail einfügen.", true);
-    const parsed = parseMoonAttempt(content);
-    if (!parsed.isMoonAttempt) return status("Es konnte keine Angabe wie „Mondversuch #10“ erkannt werden.", true);
-    const button = $("#saveMessage");
-    button.disabled = true;
-    status("Wird gespeichert …");
-    try {
-      const id = editing?.id || crypto.randomUUID();
-      const imagePath = await uploadImage(id);
-      const payload = { title: parsed.title, content, image_path: imagePath, updated_at: editing ? new Date().toISOString() : null };
-      let result;
-      if (editing) {
-        result = await window.ogameSupabase.from("alliance_messages").update(payload).eq("id", id);
-      } else {
-        result = await window.ogameSupabase.from("alliance_messages").insert({
-          id, ...payload, author_id: auth.user.id, author_name: displayName(), created_at: new Date().toISOString()
-        });
-      }
-      if (result.error) throw result.error;
-      resetForm();
-      await loadMessages();
-    } catch (error) {
-      status(`Speichern fehlgeschlagen: ${error.message}`, true);
-    } finally { button.disabled = false; }
-  }
-
-  async function deleteMessage(item) {
-    if (!confirm(`„${item.title || "Mondversuch"}“ wirklich löschen?`)) return;
-    const { error } = await window.ogameSupabase.from("alliance_messages").delete().eq("id", item.id);
-    if (error) return alert(`Löschen fehlgeschlagen: ${error.message}`);
-    if (item.image_path) await window.ogameSupabase.storage.from(BUCKET).remove([item.image_path]);
-    await loadMessages();
-  }
-
-  function openImage(src) { $("#modalImage").src = src; $("#imageModal").hidden = false; }
-  function closeImage() { $("#imageModal").hidden = true; $("#modalImage").src = ""; }
-
-  document.addEventListener("ogame-auth-ready", async event => {
-    auth = event.detail;
-    $("#authUserName").textContent = displayName();
-    await loadPlayers();
-    await loadMessages();
-  }, { once: true });
-  $("#messageForm")?.addEventListener("submit", saveMessage);
-  $("#cancelEdit")?.addEventListener("click", resetForm);
-  $("#messageImage")?.addEventListener("change", event => {
-    const file = event.target.files?.[0] || null;
-    if (!setSelectedImage(file, "Screenshot")) event.target.value = "";
+  window.ogameAccountDashboardDataSource = Object.freeze({
+    source,
+    load,
+    loadSnapshot,
+    loadLocal,
+    loadSupabase: loadSupabaseMetadata,
+    clearCache: () => snapshotCache.clear()
   });
-  $("#messageContent")?.addEventListener("paste", handleClipboardImage);
-  // Zusätzlich global lauschen: Manche Browser liefern Screenshots nicht direkt am Textfeld.
-  document.addEventListener("paste", event => {
-    if (event.target === $("#messageContent")) return;
-    handleClipboardImage(event);
-  });
-  $("#closeImageModal")?.addEventListener("click", closeImage);
-  $("#imageModal")?.addEventListener("click", event => { if (event.target === event.currentTarget) closeImage(); });
 })();

@@ -1,287 +1,227 @@
-(() => {
-  "use strict";
-
-  const STORAGE_KEY = "ogame.dashboard.dataSource";
-  const PAGE_SIZE = 1000;
-  const snapshotCache = new Map();
-  const snapshotMetaBySourceId = new Map();
-
-  function source() {
-    return "supabase";
+[
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T04:25:29.693Z",
+    "created_at": "2026-07-18T04:25:29.693Z",
+    "imported_at": "2026-07-18 04:25:29",
+    "player_id": "101521",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "5.9.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T06:15:32.832Z",
+    "created_at": "2026-07-18T06:15:32.832Z",
+    "imported_at": "2026-07-18 06:15:33",
+    "player_id": "101521",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "6.2.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T18:52:41.526Z",
+    "created_at": "2026-07-18T18:52:41.526Z",
+    "imported_at": "2026-07-18 18:52:41",
+    "player_id": "101521",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "6.2.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T20:36:47.335Z",
+    "created_at": "2026-07-18T20:36:47.335Z",
+    "imported_at": "2026-07-18 20:36:47",
+    "player_id": "101521",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.2.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T20:46:37.974Z",
+    "created_at": "2026-07-18T20:46:37.974Z",
+    "imported_at": "2026-07-18 20:46:38",
+    "player_id": "101521",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.2.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-18T21:27:15.087Z",
+    "created_at": "2026-07-18T21:27:15.087Z",
+    "imported_at": "2026-07-18 21:27:15",
+    "player_id": "101521",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.3.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-19T05:38:51.747Z",
+    "created_at": "2026-07-19T05:38:51.747Z",
+    "imported_at": "2026-07-19 05:38:51",
+    "player_id": "101521",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.4.1"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-20T04:18:30.591Z",
+    "created_at": "2026-07-20T04:18:30.591Z",
+    "imported_at": "2026-07-20 04:18:30",
+    "player_id": "101521",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.5.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-21T04:18:53.677Z",
+    "created_at": "2026-07-21T04:18:53.677Z",
+    "imported_at": "2026-07-21 04:18:53",
+    "player_id": "101521",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.5.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-22T04:33:25.954Z",
+    "created_at": "2026-07-22T04:33:25.954Z",
+    "imported_at": "2026-07-22 04:33:26",
+    "player_id": "101521",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.5.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-24T05:18:38.379Z",
+    "created_at": "2026-07-24T05:18:38.379Z",
+    "imported_at": "2026-07-24 05:18:38",
+    "player_id": "101521",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.5.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-25T05:56:36.417Z",
+    "created_at": "2026-07-25T05:56:36.417Z",
+    "imported_at": "2026-07-25 05:56:36",
+    "player_id": "101521",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.5.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-25T06:17:22.954Z",
+    "created_at": "2026-07-25T06:17:22.954Z",
+    "imported_at": "2026-07-25 06:17:23",
+    "player_id": "101521",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.6.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-25T20:03:51.878Z",
+    "created_at": "2026-07-25T20:03:51.878Z",
+    "imported_at": "2026-07-25 20:03:52",
+    "player_id": "101521",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.6.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-26T05:00:07.837Z",
+    "created_at": "2026-07-26T05:00:07.837Z",
+    "imported_at": "2026-07-26 05:00:07",
+    "player_id": "101521",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.6.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-26T05:04:39.836Z",
+    "created_at": "2026-07-26T05:04:39.836Z",
+    "imported_at": "2026-07-26 05:04:40",
+    "player_id": "101521",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.6.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-26T05:07:13.112Z",
+    "created_at": "2026-07-26T05:07:13.112Z",
+    "imported_at": "2026-07-26 05:07:13",
+    "player_id": "101521",
+    "player_name": "XellDIncht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.6.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-27T04:27:01.424Z",
+    "created_at": "2026-07-27T04:27:01.424Z",
+    "imported_at": "2026-07-27 04:27:01",
+    "player_id": "101521",
+    "player_name": "gustlberger",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.6.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-28T04:09:12.995Z",
+    "created_at": "2026-07-28T04:09:12.995Z",
+    "imported_at": "2026-07-28 04:09:13",
+    "player_id": "101521",
+    "player_name": "gustlberger",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.6.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-29T04:42:57.992Z",
+    "created_at": "2026-07-29T04:42:57.992Z",
+    "imported_at": "2026-07-29 04:42:58",
+    "player_id": "101521",
+    "player_name": "gustlberger",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.6.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-30T04:22:07.483Z",
+    "created_at": "2026-07-30T04:22:07.483Z",
+    "imported_at": "2026-07-30 04:22:07",
+    "player_id": "101521",
+    "player_name": "gustlberger",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.8.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-07-31T04:13:01.947Z",
+    "created_at": "2026-07-31T04:13:01.947Z",
+    "imported_at": "2026-07-31 04:13:02",
+    "player_id": "101521",
+    "player_name": "gustlberger",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.8.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-08-01T05:35:06.758Z",
+    "created_at": "2026-08-01T05:35:06.758Z",
+    "imported_at": "2026-08-01 05:35:06",
+    "player_id": "101521",
+    "player_name": "gustlberger",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.8.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-08-02T04:52:59.991Z",
+    "created_at": "2026-08-02T04:52:59.991Z",
+    "imported_at": "2026-08-02 04:53:00",
+    "player_id": "101521",
+    "player_name": "gustlberger",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.8.0"
+  },
+  {
+    "snapshot_id": "s282-de.ogame.gameforge.com:101521:2026-08-03T04:30:28.333Z",
+    "created_at": "2026-08-03T04:30:28.333Z",
+    "imported_at": "2026-08-03 04:30:28",
+    "player_id": "101521",
+    "player_name": "XellDincht",
+    "universe": "s282-de.ogame.gameforge.com",
+    "collector_version": "7.8.0"
   }
-
-  async function localJson(path) {
-    const response = await fetch(path, { cache: "no-store" });
-    if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
-    return response.json();
-  }
-
-  function client() {
-    const value = window.parent?.ogameSupabase || window.ogameSupabase;
-    if (!value) throw new Error("Supabase-Client der Hauptseite ist nicht verfügbar.");
-    return value;
-  }
-
-  function err(error) {
-    return [error?.message, error?.details, error?.hint].filter(Boolean).join(" · ") || "Unbekannter Supabase-Fehler";
-  }
-
-  async function rows(query, label) {
-    const { data, error } = await query;
-    if (error) throw new Error(`${label}: ${err(error)}`);
-    return data || [];
-  }
-
-  async function pagedBySnapshot(table, select, dbSnapshotId, label) {
-    const result = [];
-    for (let from = 0; ; from += PAGE_SIZE) {
-      const page = await rows(
-        client().from(table).select(select).eq("snapshot_id", dbSnapshotId).range(from, from + PAGE_SIZE - 1),
-        label
-      );
-      result.push(...page);
-      if (page.length < PAGE_SIZE) break;
-    }
-    return result;
-  }
-
-  async function loadSupabaseMetadata() {
-    const sb = client();
-    const { data: sessionData, error: sessionError } = await sb.auth.getSession();
-    if (sessionError) throw new Error(`Supabase-Session: ${sessionError.message}`);
-    if (!sessionData?.session) throw new Error("Keine gültige Supabase-Anmeldung vorhanden.");
-
-    const accounts = await rows(
-      sb.from("ogame_accounts")
-        .select("id, ogame_player_id, current_player_name, universe, is_active")
-        .eq("is_active", true)
-        .order("current_player_name"),
-      "Accounts"
-    );
-
-    const snapshots = [];
-    snapshotMetaBySourceId.clear();
-    for (const account of accounts) {
-      const found = await rows(
-        sb.from("ogame_account_snapshots")
-          .select("id, account_id, source_snapshot_id, created_at, imported_at, collector_version")
-          .eq("account_id", account.id)
-          .order("created_at", { ascending: true }),
-        `Snapshot-Liste für ${account.current_player_name}`
-      );
-      for (const row of found) {
-        const meta = {
-          db_snapshot_id: row.id,
-          snapshot_id: row.source_snapshot_id,
-          created_at: row.created_at,
-          imported_at: row.imported_at,
-          player_id: account.ogame_player_id,
-          player_name: account.current_player_name,
-          universe: account.universe,
-          collector_version: row.collector_version,
-          account_id: account.id
-        };
-        snapshots.push(meta);
-        snapshotMetaBySourceId.set(meta.snapshot_id, meta);
-      }
-    }
-
-    const latestByAccount = new Map();
-    for (const snapshot of snapshots) {
-      const current = latestByAccount.get(snapshot.account_id);
-      if (!current || new Date(snapshot.created_at) > new Date(current.created_at)) {
-        latestByAccount.set(snapshot.account_id, snapshot);
-      }
-    }
-
-    const summary = {
-      export_version: "supabase-lazy-v1",
-      accounts: accounts.map(account => {
-        const latest = latestByAccount.get(account.id);
-        return {
-          snapshot_id: latest?.snapshot_id || null,
-          created_at: latest?.created_at || null,
-          player_id: account.ogame_player_id,
-          player_name: account.current_player_name,
-          universe: account.universe,
-          collector_version: latest?.collector_version || null,
-          planet_count: null,
-          production_per_hour: { metal: 0, crystal: 0, deuterium: 0 }
-        };
-      }).filter(account => account.snapshot_id)
-    };
-
-    return { summary, snapshots, planets: [], production: [], technologies: [], flights: [], lazy: true };
-  }
-
-  async function loadSupabaseSnapshot(sourceSnapshotId) {
-    if (snapshotCache.has(sourceSnapshotId)) return snapshotCache.get(sourceSnapshotId);
-    const sb = client();
-    let meta = snapshotMetaBySourceId.get(sourceSnapshotId);
-    if (!meta) {
-      const found = await rows(
-        sb.from("ogame_account_snapshots")
-          .select("id, account_id, source_snapshot_id, created_at, imported_at, collector_version, ogame_accounts!inner(ogame_player_id, current_player_name, universe)")
-          .eq("source_snapshot_id", sourceSnapshotId)
-          .limit(1),
-        "Snapshot"
-      );
-      const row = found[0];
-      if (!row) throw new Error(`Snapshot nicht gefunden: ${sourceSnapshotId}`);
-      const account = row.ogame_accounts;
-      meta = {
-        db_snapshot_id: row.id,
-        snapshot_id: row.source_snapshot_id,
-        created_at: row.created_at,
-        imported_at: row.imported_at,
-        player_id: account.ogame_player_id,
-        player_name: account.current_player_name,
-        universe: account.universe,
-        collector_version: row.collector_version,
-        account_id: row.account_id
-      };
-      snapshotMetaBySourceId.set(sourceSnapshotId, meta);
-    }
-
-    const dbId = meta.db_snapshot_id;
-    const [objectRows, technologyRows, flightRows] = await Promise.all([
-      pagedBySnapshot(
-        "ogame_account_objects",
-        "id, snapshot_id, source_object_id, object_type, object_order, name, coordinates, image_url, background_image_url, lifeform_name, diameter_km, fields_used, fields_total, temperature_min_c, temperature_max_c",
-        dbId,
-        "Objekte"
-      ),
-      pagedBySnapshot(
-        "ogame_account_technologies",
-        "snapshot_id, object_id, category, technology_id, name, value",
-        dbId,
-        "Technologien"
-      ),
-      pagedBySnapshot(
-        "ogame_account_flights",
-        "snapshot_id, source_flight_id, mission, origin_coordinates, destination_coordinates, arrival_text, is_returning, ship_count, ships, raw_text",
-        dbId,
-        "Flüge"
-      )
-    ]);
-
-    const objectIds = objectRows.map(row => row.id);
-    const productionRows = objectIds.length
-      ? await rows(
-          sb.from("ogame_account_production")
-            .select("object_id, metal_per_hour, crystal_per_hour, deuterium_per_hour, energy_available, energy_production, metal_current, crystal_current, deuterium_current, metal_storage, crystal_storage, deuterium_storage, source")
-            .in("object_id", objectIds),
-          "Produktion"
-        )
-      : [];
-
-    const objectById = new Map(objectRows.map(row => [row.id, row]));
-    const common = {
-      snapshot_id: meta.snapshot_id,
-      created_at: meta.created_at,
-      player_name: meta.player_name,
-      universe: meta.universe
-    };
-
-    const planets = objectRows.map(row => ({
-      ...common,
-      planet_id: row.source_object_id,
-      name: row.name,
-      coordinates: row.coordinates ? `[${String(row.coordinates).replace(/[\[\]]/g, "")}]` : "",
-      object_type: row.object_type,
-      planet_order: row.object_order,
-      image_url: row.image_url,
-      background_image_url: row.background_image_url,
-      lifeform_name: row.lifeform_name,
-      diameter_km: row.diameter_km,
-      fields_used: row.fields_used,
-      fields_total: row.fields_total,
-      temperature_min_c: row.temperature_min_c,
-      temperature_max_c: row.temperature_max_c
-    }));
-
-    const production = productionRows.map(row => {
-      const object = objectById.get(row.object_id);
-      return {
-        ...common,
-        planet_id: object?.source_object_id ?? null,
-        planet_name: object?.name ?? null,
-        coordinates: object?.coordinates ? `[${String(object.coordinates).replace(/[\[\]]/g, "")}]` : "",
-        ...row
-      };
-    });
-
-    const technologies = technologyRows.map(row => {
-      const object = row.object_id ? objectById.get(row.object_id) : null;
-      return {
-        ...common,
-        planet_id: object?.source_object_id ?? null,
-        planet_name: object?.name ?? null,
-        coordinates: object?.coordinates ? `[${String(object.coordinates).replace(/[\[\]]/g, "")}]` : null,
-        category: row.category,
-        technology_id: row.technology_id,
-        name: row.name,
-        value: row.value
-      };
-    });
-
-    const flights = flightRows.map(row => ({
-      ...common,
-      flight_id: row.source_flight_id,
-      mission: row.mission,
-      origin_coordinates: row.origin_coordinates,
-      destination_coordinates: row.destination_coordinates,
-      arrival: row.arrival_text,
-      is_returning: row.is_returning ? 1 : 0,
-      ship_count: row.ship_count,
-      ships: row.ships || {},
-      raw_text: row.raw_text
-    }));
-
-    const result = { snapshot: meta, planets, production, technologies, flights };
-    snapshotCache.set(sourceSnapshotId, result);
-    return result;
-  }
-
-  let localDataPromise = null;
-  async function loadLocal() {
-    if (!localDataPromise) {
-      localDataPromise = Promise.all(
-        ["summary", "snapshots", "planets", "production", "technologies", "active_flights"]
-          .map(name => localJson(`data/${name}.json`))
-      ).then(([summary, snapshots, planets, production, technologies, flights]) => ({
-        summary, snapshots, planets, production, technologies, flights, lazy: false
-      }));
-    }
-    return localDataPromise;
-  }
-
-  async function loadLocalSnapshot(sourceSnapshotId) {
-    const all = await loadLocal();
-    const snapshot = all.snapshots.find(row => row.snapshot_id === sourceSnapshotId);
-    return {
-      snapshot,
-      planets: all.planets.filter(row => row.snapshot_id === sourceSnapshotId),
-      production: all.production.filter(row => row.snapshot_id === sourceSnapshotId),
-      technologies: all.technologies.filter(row => row.snapshot_id === sourceSnapshotId),
-      flights: all.flights.filter(row => row.snapshot_id === sourceSnapshotId)
-    };
-  }
-
-  async function load() {
-    return loadSupabaseMetadata();
-  }
-
-  async function loadSnapshot(sourceSnapshotId) {
-    return loadSupabaseSnapshot(sourceSnapshotId);
-  }
-
-  window.ogameAccountDashboardDataSource = Object.freeze({
-    source,
-    load,
-    loadSnapshot,
-    loadLocal,
-    loadSupabase: loadSupabaseMetadata,
-    clearCache: () => snapshotCache.clear()
-  });
-})();
+]
