@@ -25,7 +25,7 @@ const LIFEFORM_TECH_NAMES = {
 };
 function technologyName(t) { const raw = String(t.name || t.technology_name || '').trim(); const id = String(t.technology_id); if (raw && !/^Technologie\s+\d+$/i.test(raw)) return raw; return LIFEFORM_TECH_NAMES[id] || raw || `Technologie ${id}` }
 let heightFrame = 0;
-function notifyParentHeight() { if (window.parent === window) return; const height = Math.ceil(Math.max(document.body?.scrollHeight || 0, document.documentElement?.scrollHeight || 0)); if (height === heightFrame) return; heightFrame = height; window.parent.postMessage({ type: 'ogame-dashboard-height', height }, window.location.origin) }
+function notifyParentHeight() { if (window.parent === window) return; const main = document.querySelector('main'); const height = Math.ceil((main?.getBoundingClientRect().bottom || document.body.scrollHeight) + 16); if (Math.abs(height - heightFrame) < 2) return; heightFrame = height; window.parent.postMessage({ type: 'ogame-dashboard-height', height }, window.location.origin) }
 async function json(path) { const r = await fetch(path, { cache: 'no-store' }); if (!r.ok) throw Error(`${path}: HTTP ${r.status}`); return r.json() }
 function accountKey(a) { return `${a.player_id}|${a.universe}` }
 function account() { return state.summary.accounts.find(a => accountKey(a) === state.selectedAccount) }
@@ -185,14 +185,10 @@ function celestialCard(slot, prods, techRows) {
       <div class="card-stat metal-stat"><span>${resourceIcon('metal')}</span><strong>${prodFmt(production.metal)}</strong></div>
       <div class="card-stat crystal-stat"><span>${resourceIcon('crystal')}</span><strong>${prodFmt(production.crystal)}</strong></div>
       <div class="card-stat deut-stat"><span>${resourceIcon('deut')}</span><strong>${prodFmt(production.deut)}</strong></div>
-      <div class="card-stat sum-stat"><span>${resourceIcon('sum')}</span><strong>${prodFmt(production.sum)}</strong></div>
     `;
   } else if (!missingMoon) {
     stats = `
-      <div class="card-stat facility-stat"><span>A</span><strong>${prodFmt(categoryTotalForObject(techRows, foreground.planet_id, 'facilities'))}</strong></div>
-      <div class="card-stat ship-stat"><span>S</span><strong>${prodFmt(categoryTotalForObject(techRows, foreground.planet_id, 'ships'))}</strong></div>
-      <div class="card-stat defense-stat"><span>V</span><strong>${prodFmt(categoryTotalForObject(techRows, foreground.planet_id, 'defenses'))}</strong></div>
-      <div class="card-stat sum-stat"><span>–</span><strong>–</strong></div>
+      <div class="moon-field-stat"><span>Felder</span><strong>${fmt(foreground.fields_used)} / ${fmt(foreground.fields_total)}</strong></div>
     `;
   } else {
     stats = `<div class="empty-card-stats"></div>`;
@@ -213,7 +209,7 @@ function celestialCard(slot, prods, techRows) {
         : `<span class="orb-silhouette orb-foreground" aria-hidden="true"></span>`}
     </button>
 
-    <div class="card-stats">${stats}</div>
+    <div class="card-stats${moonMode ? ' moon-card-stats' : ''}">${stats}</div>
   </article>`;
 }
 
@@ -343,7 +339,7 @@ function rowsForActiveTab(options) {
         rows += `<tr class="lf-race-row ${expanded ? 'expanded' : 'collapsed'}" data-lf-race="${race.prefix}">
           <td colspan="999"><button type="button" class="lf-race-toggle" data-lf-toggle="${race.prefix}"><span>${expanded ? '▾' : '▸'}</span>${esc(race.name)}</button></td>
         </tr>`;
-        rows += lfResearch.replaceAll(`data-group="lf_${race.prefix}"`, `data-group="lf_${race.prefix}" class="${expanded ? '' : 'lf-hidden-row'}"`);
+        rows += expanded ? lfResearch : lfResearch.replaceAll('<tr class="data-row"', '<tr class="data-row lf-hidden-row"');
       }
       return rows;
     }
@@ -377,31 +373,51 @@ const LIFEFORM_BY_PREFIX = new Map(LIFEFORM_RACES.map(race => [race.prefix, race
 // Nicht hinterlegte Technologien zeigen weiterhin ihre Gesamtstufe an,
 // damit keine erfundenen Prozentwerte ausgegeben werden.
 const LIFEFORM_RESEARCH_BONUS = {
-  '11202': { perLevel: 0.06, label: 'Metall/Kristall/Deut' },
-  '12205': { perLevel: 0.08, label: 'Metall/Kristall/Deut' },
+  '11201': { text: level => `Stufe ${fmt(level)} · schnellere Lebensform-Entdeckung` },
+  '11202': { perLevel: 0.06, label: 'Metall/Kristall/Deuterium' },
+  '11203': { text: level => `Stufe ${fmt(level)} · schnellere Zivilschiffe` },
+  '11204': { text: level => `Stufe ${fmt(level)} · Spionage-/Tarnbonus` },
+  '12201': { perLevel: 0.5, label: 'Energie' },
+  '12202': { perLevel: 0.1, label: 'Metall' },
+  '12203': { perLevel: 0.08, label: 'Deuterium' },
+  '12204': { perLevel: 0.4, label: 'Laderaum ziviler Schiffe' },
+  '12205': { perLevel: 0.08, label: 'Metall/Kristall/Deuterium' },
   '12206': { perLevel: 0.25, label: 'Energie' },
+  '12207': { perLevel: 0.1, label: 'Metall' },
   '12210': { perLevel: 0.08, label: 'Metall' },
   '12211': { perLevel: 0.08, label: 'Kristall' },
-  '12212': { perLevel: 0.08, label: 'Deuterium' }
+  '12212': { perLevel: 0.08, label: 'Deuterium' },
+  '13206': { perLevel: 0.06, label: 'Metall/Kristall/Deuterium' }
 };
 
 function inferredLifeformName(object, techRows) {
   if (!object || object.is_placeholder) return '';
 
-  // Lebensformgebäude sind eindeutig an die aktuell gewählte Lebensform gebunden.
-  // Lebensformforschungen können dagegen aus mehreren Völkern gewählt sein und
-  // dürfen deshalb nicht zur Erkennung verwendet werden.
-  const buildingPrefixes = techRows
-    .filter(row => row.planet_id === object.planet_id && row.category === 'lifeform_buildings' && Number(row.value) > 0)
+  const rowsForObject = techRows.filter(row => row.planet_id === object.planet_id && Number(row.value) > 0);
+  const buildingPrefixes = rowsForObject
+    .filter(row => row.category === 'lifeform_buildings')
     .map(row => Math.floor(Number(row.technology_id) / 1000))
     .filter(prefix => LIFEFORM_BY_PREFIX.has(prefix));
 
-  if (buildingPrefixes.length) {
+  const chooseDominant = prefixes => {
+    if (!prefixes.length) return '';
     const counts = new Map();
-    for (const prefix of buildingPrefixes) counts.set(prefix, (counts.get(prefix) || 0) + 1);
+    for (const prefix of prefixes) counts.set(prefix, (counts.get(prefix) || 0) + 1);
     const [prefix] = [...counts.entries()].sort((a,b) => b[1]-a[1])[0];
     return LIFEFORM_BY_PREFIX.get(prefix) || '';
-  }
+  };
+
+  const fromBuildings = chooseDominant(buildingPrefixes);
+  if (fromBuildings) return fromBuildings;
+
+  // Ältere Snapshots enthalten teilweise keine LF-Gebäude. Dann ist der
+  // dominante Forschungs-Prefix der beste verfügbare Hinweis.
+  const researchPrefixes = rowsForObject
+    .filter(row => row.category === 'lifeform_research')
+    .map(row => Math.floor(Number(row.technology_id) / 1000))
+    .filter(prefix => LIFEFORM_BY_PREFIX.has(prefix));
+  const fromResearch = chooseDominant(researchPrefixes);
+  if (fromResearch) return fromResearch;
 
   return object.lifeform_name || '';
 }
@@ -435,8 +451,10 @@ function normalResearchBonusText(technologyId, level) {
 }
 
 function lifeformBonusText(technologyId, totalLevel) {
+  if (!(totalLevel > 0)) return '–';
   const def = LIFEFORM_RESEARCH_BONUS[String(technologyId)];
-  if (!def) return totalLevel > 0 ? `Σ ${fmt(totalLevel)}` : '–';
+  if (!def) return `Stufe ${fmt(totalLevel)} · Bonusformel noch nicht hinterlegt`;
+  if (typeof def.text === 'function') return def.text(totalLevel);
   const bonus = totalLevel * def.perLevel;
   return `+${bonus.toLocaleString('de-DE', {maximumFractionDigits:2})}% ${def.label}`;
 }
@@ -581,7 +599,7 @@ async function init() {
     const { summary, snapshots } = loaded;
     Object.assign(state, { summary, snapshots, planets: [], production: [], technologies: [], flights: [] });
     const sel = $('#accountSelect');
-    sel.innerHTML = summary.accounts.map(a => `<option value="${esc(accountKey(a))}">${esc(a.player_name)} · ${esc(a.universe)}</option>`).join('');
+    sel.innerHTML = summary.accounts.map(a => `<option value="${esc(accountKey(a))}">${esc(a.player_name)}</option>`).join('');
     state.selectedAccount = sel.value;
     sel.onchange = async () => {
       state.selectedAccount = sel.value;

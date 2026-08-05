@@ -449,3 +449,21 @@ footer{text-align:center;color:#668093;padding:18px}
   .card-stat span{width:30px;height:30px}
   .card-stat strong{font-size:16px}
 }
+
+
+/* v8.5: kompaktere Karten, echte Mondfelder und stabilere Höhe */
+html,body{height:auto!important;min-height:0!important}
+body{overflow-x:hidden}
+.card-stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;min-height:58px}
+.card-stat span{width:38px;height:38px;border-radius:10px}
+.resource-svg{width:29px;height:29px}
+.card-stat strong{font-size:15px;line-height:1.15}
+.moon-card-stats{grid-template-columns:1fr;align-items:center}
+.moon-field-stat{display:flex;align-items:center;justify-content:center;gap:9px;padding:7px 9px;border:1px solid #294b60;border-radius:9px;background:#0a1c28}
+.moon-field-stat span{color:var(--muted);font-size:12px}
+.moon-field-stat strong{font-size:18px;color:#dff7ff}
+.lf-hidden-row{display:none!important}
+.controls select{font-size:15px;line-height:1.25;min-width:0;width:auto;max-width:220px;padding:9px 11px}
+.controls label:first-child select{width:150px}
+.controls label:nth-child(2) select{width:190px}
+.account-overview-main iframe{height:auto}
