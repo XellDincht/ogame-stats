@@ -1,4 +1,4 @@
-const state = { summary: null, snapshots: [], planets: [], production: [], technologies: [], flights: [], selectedAccount: null, selectedSnapshot: null, productionHours: 24, renderToken: 0, objectMode: 'planet' };
+const state = { summary: null, snapshots: [], planets: [], production: [], technologies: [], flights: [], selectedAccount: null, selectedSnapshot: null, productionHours: 24, renderToken: 0, objectMode: 'planet', activeTab: 'overview' };
 const $ = s => document.querySelector(s); const nf = new Intl.NumberFormat('de-DE');
 const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
 const fmt = v => Number.isFinite(Number(v)) ? nf.format(Math.trunc(Number(v))) : '–';
@@ -89,7 +89,7 @@ function buildObjectSlots(objects) {
       const placeholder = !active
         ? {
             planet_id: `missing-moon:${slot.key}`,
-            name: 'Kein Mond',
+            name: '',
             coordinates: slot.planet?.coordinates || '',
             object_type: 'missing_moon',
             planet_order: slot.order,
@@ -119,33 +119,14 @@ function previousObjectForSlot(slot, previousObjects) {
 
 function setColumnWidth(count) { const usable = Math.max(760, window.innerWidth) - 430; const width = Math.max(82, Math.min(122, Math.floor(usable / Math.max(count, 1)))); document.documentElement.style.setProperty('--planet-width', `${width}px`) }
 function header(slots) {
-  const modeLabel = state.objectMode === 'moon' ? 'Monde' : 'Planeten';
-  const switchLabel = state.objectMode === 'moon' ? 'Zu allen Planeten wechseln' : 'Zu allen Monden wechseln';
-
   return `<tr>
-    <th class="label-col empire-mode-head">
-      <div class="empire-mode-title">Imperium</div>
-      <button type="button" id="objectModeToggle" class="object-mode-toggle" title="${switchLabel}">
-        <span class="object-mode-icon">${state.objectMode === 'moon' ? '🌙' : '🪐'}</span>
-        <span>${modeLabel}</span>
-        <small>alle umschalten</small>
-      </button>
-    </th>
+    <th class="label-col compact-label-head">Wert</th>
     ${slots.map(slot => {
+      const missing = state.objectMode === 'moon' && !slot.hasActiveObject;
       const object = slot.active;
-      const missingMoon = state.objectMode === 'moon' && !slot.hasActiveObject;
-      const activeLabel = state.objectMode === 'moon' ? 'Mond' : 'Planet';
-
-      return `<th class="planet-head object-${slot.activeType}${missingMoon ? ' missing-moon-head' : ''}">
-        <div class="celestial-images">
-          ${object?.image_url
-            ? `<img class="planet-image main-celestial-image${missingMoon ? ' ghost-planet-image' : ''}" src="${esc(object.image_url)}" alt="${missingMoon ? 'Planet ohne Mond' : activeLabel}">`
-            : `<div class="planet-image main-celestial-image"></div>`}
-          <span class="celestial-type-badge">${missingMoon ? 'Kein Mond' : activeLabel}</span>
-        </div>
-        <div class="planet-name">${esc(missingMoon ? (slot.planet?.name || 'Kein Mond') : object?.name || activeLabel)}</div>
-        <div class="coords">${esc(object?.coordinates || '')}</div>
-        <div class="planet-meta">${missingMoon ? 'Keine Mond-Daten vorhanden' : `${fmt(object?.fields_used)}/${fmt(object?.fields_total)} · ${fmt(object?.temperature_min_c)}–${fmt(object?.temperature_max_c)} °C`}</div>
+      return `<th class="compact-object-head${missing ? ' missing-object-head' : ''}">
+        <span>${missing ? '' : esc(object?.name || '')}</span>
+        <small>${missing ? '' : esc(object?.coordinates || '')}</small>
       </th>`;
     }).join('')}
     <th class="summary-col">Ø</th>
@@ -153,6 +134,208 @@ function header(slots) {
     <th class="summary-col">Gesamt</th>
   </tr>`;
 }
+
+const TAB_LABELS = {
+  overview: 'Übersicht',
+  buildings: 'Versorgung',
+  research: 'Forschung',
+  facilities: 'Anlagen',
+  ships: 'Schiffswerft',
+  defenses: 'Verteidigung',
+  production: 'Produktion'
+};
+
+function categoryTotalForObject(techRows, objectId, category) {
+  return techRows
+    .filter(row => row.planet_id === objectId && row.category === category)
+    .reduce((sum, row) => sum + (Number(row.value) || 0), 0);
+}
+
+function productionForPlanet(prods, planet) {
+  const row = prods.get(planet?.planet_id) || {};
+  const factor = state.productionHours;
+  const metal = (Number(row.metal_per_hour) || 0) * factor;
+  const crystal = (Number(row.crystal_per_hour) || 0) * factor;
+  const deut = (Number(row.deuterium_per_hour) || 0) * factor;
+  return { metal, crystal, deut, sum: metal + crystal + deut };
+}
+
+function celestialCard(slot, prods, techRows) {
+  const foreground = slot.active;
+  const planet = slot.planet;
+  const moon = slot.moon;
+  const moonMode = state.objectMode === 'moon';
+  const missingMoon = moonMode && !moon;
+  const background = moonMode ? planet : moon;
+  const foregroundImage = missingMoon ? null : foreground?.image_url;
+  const backgroundImage = background?.image_url;
+  const production = productionForPlanet(prods, planet);
+
+  let stats = '';
+  if (!moonMode) {
+    stats = `
+      <div class="card-stat metal-stat"><span>M</span><strong>${prodFmt(production.metal)}</strong></div>
+      <div class="card-stat crystal-stat"><span>K</span><strong>${prodFmt(production.crystal)}</strong></div>
+      <div class="card-stat deut-stat"><span>D</span><strong>${prodFmt(production.deut)}</strong></div>
+      <div class="card-stat sum-stat"><span>Σ</span><strong>${prodFmt(production.sum)}</strong></div>
+    `;
+  } else if (!missingMoon) {
+    stats = `
+      <div class="card-stat facility-stat"><span>A</span><strong>${prodFmt(categoryTotalForObject(techRows, foreground.planet_id, 'facilities'))}</strong></div>
+      <div class="card-stat ship-stat"><span>S</span><strong>${prodFmt(categoryTotalForObject(techRows, foreground.planet_id, 'ships'))}</strong></div>
+      <div class="card-stat defense-stat"><span>V</span><strong>${prodFmt(categoryTotalForObject(techRows, foreground.planet_id, 'defenses'))}</strong></div>
+      <div class="card-stat sum-stat"><span>–</span><strong>–</strong></div>
+    `;
+  } else {
+    stats = `<div class="empty-card-stats"></div>`;
+  }
+
+  return `<article class="celestial-card${missingMoon ? ' missing-moon-card' : ''}">
+    <div class="card-title">
+      <strong>${missingMoon ? '' : esc(foreground?.name || '')}</strong>
+      <span>${missingMoon ? '' : esc(foreground?.coordinates || '')}</span>
+    </div>
+
+    <button type="button" class="orb-stack" data-mode-switch title="${moonMode ? 'Zu den Planeten wechseln' : 'Zu den Monden wechseln'}">
+      ${backgroundImage
+        ? `<img class="orb-image orb-background" src="${esc(backgroundImage)}" alt="">`
+        : `<span class="orb-silhouette orb-background" aria-hidden="true"></span>`}
+      ${foregroundImage
+        ? `<img class="orb-image orb-foreground" src="${esc(foregroundImage)}" alt="">`
+        : `<span class="orb-silhouette orb-foreground" aria-hidden="true"></span>`}
+    </button>
+
+    <div class="card-stats">${stats}</div>
+  </article>`;
+}
+
+function renderCelestialCards(slots, prods, techRows) {
+  const container = $('#celestialCards');
+  if (!container) return;
+  container.innerHTML = slots.map(slot => celestialCard(slot, prods, techRows)).join('');
+
+  container.querySelectorAll('[data-mode-switch]').forEach(button => {
+    button.onclick = () => switchObjectMode();
+  });
+}
+
+function validTabsForMode() {
+  return state.objectMode === 'moon'
+    ? ['overview', 'facilities', 'ships', 'defenses']
+    : ['overview', 'buildings', 'research', 'facilities', 'ships', 'defenses', 'production'];
+}
+
+function updateTabs() {
+  const validTabs = validTabsForMode();
+  if (!validTabs.includes(state.activeTab)) state.activeTab = 'overview';
+
+  document.querySelectorAll('#dashboardTabs [data-tab]').forEach(button => {
+    const visible = validTabs.includes(button.dataset.tab);
+    button.hidden = !visible;
+    button.classList.toggle('active', button.dataset.tab === state.activeTab);
+  });
+
+  const periodStrip = $('#productionPeriodStrip');
+  if (periodStrip) periodStrip.hidden = state.activeTab !== 'production';
+
+  const title = $('#detailTabTitle');
+  if (title) title.textContent = TAB_LABELS[state.activeTab] || 'Übersicht';
+
+  const modeLabel = $('#detailModeLabel');
+  if (modeLabel) modeLabel.textContent = state.objectMode === 'moon' ? 'Monde' : 'Planeten';
+}
+
+function switchObjectMode() {
+  const stage = $('.celestial-stage');
+  if (stage?.classList.contains('is-switching')) return;
+
+  stage?.classList.add('is-switching');
+  window.setTimeout(async () => {
+    state.objectMode = state.objectMode === 'moon' ? 'planet' : 'moon';
+    if (!validTabsForMode().includes(state.activeTab)) state.activeTab = 'overview';
+    await render();
+    $('.celestial-stage')?.classList.add('switch-arrived');
+    requestAnimationFrame(() => {
+      window.setTimeout(() => {
+        $('.celestial-stage')?.classList.remove('is-switching', 'switch-arrived');
+      }, 260);
+    });
+  }, 130);
+}
+
+function overviewValueRows(slots, techRows) {
+  const objects = slots.map(slot => slot.active);
+  const row = (label, values, formatter = value => esc(value ?? '–')) => {
+    const numeric = values.map(value => Number(value)).filter(Number.isFinite);
+    const total = numeric.reduce((sum, value) => sum + value, 0);
+    const average = numeric.length ? total / numeric.length : null;
+    return `<tr class="data-row overview-row">
+      <td class="label-col">${esc(label)}</td>
+      ${values.map((value, index) => `<td class="${objects[index]?.is_placeholder ? 'missing-moon-cell' : ''}">${objects[index]?.is_placeholder ? '' : formatter(value)}</td>`).join('')}
+      <td class="summary-col">${average == null ? '–' : fmt(average)}</td>
+      <td class="travelling-col">–</td>
+      <td class="summary-col">${numeric.length ? fmt(total) : '–'}</td>
+    </tr>`;
+  };
+
+  const fieldsUsed = objects.map(object => object?.is_placeholder ? null : object?.fields_used);
+  const fieldsTotal = objects.map(object => object?.is_placeholder ? null : object?.fields_total);
+  const temperature = objects.map(object => object?.is_placeholder ? '' :
+    (object?.temperature_min_c == null ? '–' : `${fmt(object.temperature_min_c)} bis ${fmt(object.temperature_max_c)} °C`));
+  const lifeforms = objects.map(object => object?.is_placeholder ? '' : (object?.lifeform_name || '–'));
+  const facilities = objects.map(object => object?.is_placeholder ? null : categoryTotalForObject(techRows, object.planet_id, 'facilities'));
+  const ships = objects.map(object => object?.is_placeholder ? null : categoryTotalForObject(techRows, object.planet_id, 'ships'));
+  const defenses = objects.map(object => object?.is_placeholder ? null : categoryTotalForObject(techRows, object.planet_id, 'defenses'));
+
+  let rows = row('Felder belegt', fieldsUsed);
+  rows += row('Felder gesamt', fieldsTotal);
+  rows += row('Temperatur', temperature, value => esc(value));
+  if (state.objectMode !== 'moon') {
+    rows += row('Lebensform', lifeforms, value => esc(value));
+  }
+  rows += row('Anlagen gesamt', facilities);
+  rows += row('Schiffe stationiert', ships);
+  rows += row('Verteidigung gesamt', defenses);
+  return rows;
+}
+
+function rowsForActiveTab(options) {
+  const {
+    slots, activeObjects, planetObjects, prods, previousProds,
+    techRows, previousTechRows, travelling, hasPrevious
+  } = options;
+
+  switch (state.activeTab) {
+    case 'overview':
+      return overviewValueRows(slots, techRows);
+    case 'production':
+      return productionRows(planetObjects, prods, previousProds, hasPrevious);
+    case 'buildings':
+      return technologyRows('buildings', activeObjects, techRows, travelling, normalTech, 'buildings', previousTechRows, hasPrevious);
+    case 'facilities':
+      return technologyRows('facilities', activeObjects, techRows, travelling, normalTech, 'facilities', previousTechRows, hasPrevious);
+    case 'ships':
+      return technologyRows('ships', activeObjects, techRows, travelling, normalTech, 'ships', previousTechRows, hasPrevious);
+    case 'defenses':
+      return technologyRows('defenses', activeObjects, techRows, travelling, normalTech, 'defenses', previousTechRows, hasPrevious);
+    case 'research': {
+      let rows = technologyRows('research', activeObjects, techRows, travelling, normalTech, 'research', previousTechRows, hasPrevious);
+      for (const race of LIFEFORM_RACES) {
+        const buildings = technologyRows('lifeform_buildings', activeObjects, techRows, travelling, lifeformPart(race.prefix, 'buildings'), 'research', previousTechRows, hasPrevious);
+        const research = technologyRows('lifeform_research', activeObjects, techRows, travelling, lifeformPart(race.prefix, 'research'), 'research', previousTechRows, hasPrevious);
+        if (buildings || research) {
+          rows += `<tr class="subsection-row"><td colspan="999">${esc(race.name)}</td></tr>`;
+          if (buildings) rows += buildings;
+          if (research) rows += research;
+        }
+      }
+      return rows;
+    }
+    default:
+      return overviewValueRows(slots, techRows);
+  }
+}
+
 function section(title, key, rows, subtitle = '') { if (!rows) return ''; return `<tr class="section-row" data-section="${key}"><td colspan="999"><button class="section-button" data-toggle="${key}"><span>${esc(title)}</span>${subtitle ? `<small>${esc(subtitle)}</small>` : ''}</button></td></tr>${rows}` }
 function deltaHtml(value, previous, formatter = fmt) { if (previous === null || previous === undefined) return ''; const d = (Number(value) || 0) - (Number(previous) || 0); const cls = d > 0 ? 'delta-positive' : d < 0 ? 'delta-negative' : 'delta-zero'; const sign = d > 0 ? '+' : ''; return `<span class="delta ${cls}">(${sign}${formatter(d)})</span>` }
 function periodLabel() { return state.productionHours === 1 ? '1h' : state.productionHours === 24 ? '24h' : '1w' }
@@ -253,27 +436,42 @@ async function render() {
     $('#allShips').textContent = fmt(stationary + moving);
     $('#travellingHint').textContent = moving === 0 && flights.length ? 'Flotten erkannt, aber Anzahl nicht lesbar' : '';
     $('#empireHead').innerHTML = header(objectSlots);
-    const categories = [['Gebäude', 'buildings'], ['Anlagen', 'facilities'], ['Forschung', 'research'], ['Schiffe', 'ships'], ['Verteidigung', 'defenses']];
-    let body = section('Produktion', 'production', productionRows(planetObjects, prods, previousProds, Boolean(prev)));
-    for (const [categoryLabel, key] of categories) body += section(categoryLabel, key, technologyRows(key, planets, techRows, travelling, normalTech, key, previousTechRows, Boolean(prev)));
-    for (const race of LIFEFORM_RACES) body += lifeformRaceSection(race, planets, techRows, travelling, previousTechRows, Boolean(prev));
-    $('#empireBody').innerHTML = body;
 
+    const stageTitle = $('#stageTitle');
+    const stageHint = $('#stageHint');
+    const modeIcon = $('#objectModeIcon');
+    const masterToggle = $('#objectModeToggle');
 
-    const objectModeToggle = document.querySelector("#objectModeToggle");
-    if (objectModeToggle) {
-      objectModeToggle.onclick = async () => {
-        state.objectMode = state.objectMode === 'moon' ? 'planet' : 'moon';
-        await render();
-      };
+    if (state.objectMode === 'moon') {
+      stageTitle.textContent = 'MONDE IM VORDERGRUND';
+      stageHint.textContent = 'Klicke auf den Planeten, um die Planeten anzuzeigen';
+      modeIcon.textContent = '🌍';
+      masterToggle.setAttribute('aria-label', 'Zur Planetenansicht wechseln');
+    } else {
+      stageTitle.textContent = 'PLANETEN IM VORDERGRUND';
+      stageHint.textContent = 'Klicke auf den Mond, um die Monde anzuzeigen';
+      modeIcon.textContent = '🌕';
+      masterToggle.setAttribute('aria-label', 'Zur Mondansicht wechseln');
     }
 
-    document.querySelectorAll('[data-toggle]').forEach(b => b.onclick = () => {
-      const key = b.dataset.toggle;
-      b.closest('.section-row').classList.toggle('collapsed');
-      document.querySelectorAll(`[data-group="${key}"]`).forEach(r => r.classList.toggle('hidden-row'));
-      requestAnimationFrame(notifyParentHeight);
+    document.documentElement.style.setProperty('--card-count', String(objectSlots.length));
+    renderCelestialCards(objectSlots, prods, techRows);
+    updateTabs();
+
+    const body = rowsForActiveTab({
+      slots: objectSlots,
+      activeObjects: planets,
+      planetObjects,
+      prods,
+      previousProds,
+      techRows,
+      previousTechRows,
+      travelling,
+      hasPrevious: Boolean(prev)
     });
+    $('#empireBody').innerHTML = body || `<tr><td colspan="999" class="empty-detail">Für diesen Bereich sind keine Daten vorhanden.</td></tr>`;
+
+    if (masterToggle) masterToggle.onclick = switchObjectMode;
     if (message) message.classList.add('hidden');
     requestAnimationFrame(notifyParentHeight);
   } catch (error) {
@@ -297,13 +495,22 @@ async function init() {
       state.selectedAccount = sel.value;
       state.selectedSnapshot = null;
       state.objectMode = 'planet';
+      state.activeTab = 'overview';
       await render();
     };
     $('#snapshotSelect').onchange = async e => {
       state.selectedSnapshot = e.target.value;
       state.objectMode = 'planet';
+      state.activeTab = 'overview';
       await render();
     };
+    document.querySelectorAll('#dashboardTabs [data-tab]').forEach(button => {
+      button.onclick = async () => {
+        state.activeTab = button.dataset.tab || 'overview';
+        await render();
+      };
+    });
+
     document.querySelectorAll('[data-period]').forEach(button => button.onclick = async () => {
       state.productionHours = Number(button.dataset.period) || 24;
       document.querySelectorAll('[data-period]').forEach(item => item.classList.toggle('active', item === button));

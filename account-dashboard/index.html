@@ -3,35 +3,99 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OGame Empire Dashboard</title>
+  <title>OGame Account Dashboard</title>
   <link rel="icon" type="image/svg+xml" href="../assets/ogame-favicon.svg">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/ogame-favicon-32.png">
   <link rel="shortcut icon" href="../favicon.ico">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="topbar">
-    <div><p class="eyebrow">OGame Stats · Empire Edition</p><h1 id="playerName">Account Dashboard</h1><p class="subline"><span id="universe">–</span> · Snapshot <span id="latestSnapshot">–</span></p></div>
-    <div class="controls"><label>Account <select id="accountSelect"></select></label><label>Tagesstand <select id="snapshotSelect"></select></label><div class="period-control" aria-label="Produktionszeitraum"><span>Produktion</span><div class="period-tabs"><button type="button" data-period="1">1h</button><button type="button" data-period="24" class="active">24h</button><button type="button" data-period="168">1w</button></div></div><button id="reloadButton">Neu laden</button></div>
+  <header class="account-header">
+    <div class="account-heading">
+      <div class="account-avatar" aria-hidden="true">◉</div>
+      <div>
+        <p class="eyebrow">OGame Stats · Account</p>
+        <h1 id="playerName">Account Dashboard</h1>
+        <p class="subline">Überblick über deine Planeten und Monde</p>
+      </div>
+    </div>
+
+    <button id="objectModeToggle" class="celestial-master-toggle" type="button" aria-label="Zur Mondansicht wechseln">
+      <span id="objectModeIcon" class="celestial-master-icon" aria-hidden="true">🌕</span>
+    </button>
+
+    <div class="account-meta">
+      <div><span>Universum</span><strong id="universe">–</strong></div>
+      <div><span>Letzter Stand</span><strong id="latestSnapshot">–</strong></div>
+    </div>
+
+    <div class="controls">
+      <label>Account <select id="accountSelect"></select></label>
+      <label>Tagesstand <select id="snapshotSelect"></select></label>
+      <button id="reloadButton" class="reload-button" type="button">↻ Neu laden</button>
+    </div>
   </header>
+
   <main>
     <section id="message" class="message hidden"></section>
-    <section class="summary-grid">
-      <article><span>Planeten / Monde</span><strong id="planetCount">–</strong></article>
-      <article class="metal"><span id="metalPeriodLabel">Metall / 24h</span><strong id="totalMetal">–</strong></article>
-      <article class="crystal"><span id="crystalPeriodLabel">Kristall / 24h</span><strong id="totalCrystal">–</strong></article>
-      <article class="deut"><span id="deutPeriodLabel">Deuterium / 24h</span><strong id="totalDeuterium">–</strong></article>
-      <article class="production-sum"><span id="sumPeriodLabel">∑ Produktion / 24h</span><strong id="totalProduction">–</strong></article>
-      <article><span>Schiffe stationiert</span><strong id="stationedShips">–</strong></article>
-      <article><span>Schiffe unterwegs</span><strong id="travellingShips">–</strong><small id="travellingHint"></small></article>
-      <article><span>Schiffe gesamt</span><strong id="allShips">–</strong></article>
+
+    <section class="celestial-stage" aria-live="polite">
+      <div class="stage-heading">
+        <div>
+          <p id="stageTitle">PLANETEN IM VORDERGRUND</p>
+          <span id="stageHint">Klicke auf den Mond, um die Monde anzuzeigen</span>
+        </div>
+        <div class="stage-count"><span>Planeten / Monde</span><strong id="planetCount">–</strong></div>
+      </div>
+      <div id="celestialCards" class="celestial-cards"></div>
     </section>
+
+    <nav id="dashboardTabs" class="dashboard-tabs" aria-label="Accountbereiche">
+      <button type="button" data-tab="overview" class="active"><span class="tab-icon">⌾</span><span>Übersicht</span></button>
+      <button type="button" data-tab="buildings"><span class="tab-icon">▣</span><span>Versorgung</span></button>
+      <button type="button" data-tab="research"><span class="tab-icon">⚗</span><span>Forschung</span></button>
+      <button type="button" data-tab="facilities"><span class="tab-icon">▥</span><span>Anlagen</span></button>
+      <button type="button" data-tab="ships"><span class="tab-icon">◉</span><span>Schiffswerft</span></button>
+      <button type="button" data-tab="defenses"><span class="tab-icon">⬡</span><span>Verteidigung</span></button>
+      <button type="button" data-tab="production"><span class="tab-icon">▰</span><span>Produktion</span></button>
+    </nav>
+
+    <section class="period-strip" id="productionPeriodStrip">
+      <span>Produktionszeitraum</span>
+      <div class="period-tabs">
+        <button type="button" data-period="1">1h</button>
+        <button type="button" data-period="24" class="active">24h</button>
+        <button type="button" data-period="168">1w</button>
+      </div>
+    </section>
+
     <section class="empire-shell">
-      <div class="empire-scroll"><table id="empireTable"><thead id="empireHead"></thead><tbody id="empireBody"></tbody></table></div>
+      <div class="detail-title">
+        <span id="detailTabTitle">Übersicht</span>
+        <small id="detailModeLabel">Planeten</small>
+      </div>
+      <div class="empire-scroll">
+        <table id="empireTable">
+          <thead id="empireHead"></thead>
+          <tbody id="empireBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Bestehende Kennzahlen bleiben für die Datenlogik vorhanden. -->
+    <section class="sr-only" aria-hidden="true">
+      <span id="metalPeriodLabel"></span><strong id="totalMetal"></strong>
+      <span id="crystalPeriodLabel"></span><strong id="totalCrystal"></strong>
+      <span id="deutPeriodLabel"></span><strong id="totalDeuterium"></strong>
+      <span id="sumPeriodLabel"></span><strong id="totalProduction"></strong>
+      <strong id="stationedShips"></strong><strong id="travellingShips"></strong>
+      <small id="travellingHint"></small><strong id="allShips"></strong>
     </section>
   </main>
+
   <footer>Empire-Collector · Supabase-Snapshots · Planet-/Mondansicht</footer>
+
   <script src="data-source.js"></script>
-<script src="app.js?v=8.1.2"></script>
+  <script src="app.js?v=8.2.0"></script>
 </body>
 </html>
