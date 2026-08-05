@@ -95,3 +95,46 @@
 .history-value-cell{
   box-shadow:none!important;
 }
+
+
+/* v8.7.5 – Spieler-Historie */
+.history-table-wrap{
+  position:relative;
+  overflow:auto;
+  isolation:isolate;
+}
+
+.history-table th:first-child,
+.history-table td:first-child{
+  position:sticky;
+  left:0;
+  z-index:10;
+  min-width:190px;
+  width:190px;
+  background:#0d1c2d !important;
+  background-image:none !important;
+  opacity:1 !important;
+  box-shadow:
+    1px 0 0 #31536d,
+    10px 0 16px rgba(0,0,0,.82);
+}
+
+.history-table thead th:first-child{
+  z-index:20;
+  background:#142840 !important;
+}
+
+.history-table tbody td:first-child{
+  color:#eef7ff;
+  font-weight:800;
+}
+
+.history-table th:not(:first-child),
+.history-table td:not(:first-child){
+  position:relative;
+  z-index:1;
+}
+
+.history-value-cell::after{
+  white-space:nowrap;
+}

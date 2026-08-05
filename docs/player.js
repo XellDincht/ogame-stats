@@ -31,7 +31,7 @@ function metricDelta(current, previous, isRank) {
 function deltaText(delta) {
   if (delta == null) return "";
   const sign = delta > 0 ? "+" : "";
-  return `${sign}${fmt(delta)} zum Vortag`;
+  return `${sign}${fmt(delta)}`;
 }
 
 function deltaClass(delta) {
@@ -43,7 +43,7 @@ function deltaClass(delta) {
 function historyCell(snapshot, previous, field, isRank) {
   const value = snapshot[field];
   const delta = metricDelta(value, previous?.[field], isRank);
-  const tooltip = delta == null ? "Kein Vortageswert vorhanden" : deltaText(delta);
+  const tooltip = delta == null ? "Kein Vergleichswert vorhanden" : deltaText(delta);
 
   return `<td class="history-value-cell ${delta == null ? "" : deltaClass(delta)}"
               data-delta="${delta == null ? "" : deltaText(delta)}"

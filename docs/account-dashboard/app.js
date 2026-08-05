@@ -1,4 +1,4 @@
-console.info('[OGame] Imperiumsübersicht app.js v8.7.4 geladen');
+console.info('[OGame] Imperiumsübersicht app.js v8.7.5 geladen');
 const state = { summary: null, snapshots: [], planets: [], production: [], technologies: [], flights: [], selectedAccount: null, selectedSnapshot: null, productionHours: 24, renderToken: 0, objectMode: 'planet', activeTab: 'overview' };
 const $ = s => document.querySelector(s); const nf = new Intl.NumberFormat('de-DE');
 const percentFmt = value => Number(value || 0).toLocaleString('de-DE', {
@@ -303,7 +303,7 @@ function renderCelestialCards(slots, prods, techRows) {
 function validTabsForMode() {
   return state.objectMode === 'moon'
     ? ['overview', 'facilities', 'ships', 'defenses']
-    : ['overview', 'buildings', 'research', 'facilities', 'ships', 'defenses', 'production'];
+    : ['overview', 'production', 'buildings', 'research', 'lifeform', 'facilities', 'ships', 'defenses'];
 }
 
 function updateTabs() {
