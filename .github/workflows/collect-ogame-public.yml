@@ -10,10 +10,7 @@ on:
       timezone: "Europe/Vienna"
 
     - cron: "41 5 * * *"
-      timezone: "Europe/Vienna"
-
-    - cron: "*/5 * * * *"
-      
+      timezone: "Europe/Vienna"  
 
 permissions:
   contents: read

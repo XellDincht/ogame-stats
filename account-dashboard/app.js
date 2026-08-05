@@ -1,5 +1,10 @@
 const state = { summary: null, snapshots: [], planets: [], production: [], technologies: [], flights: [], selectedAccount: null, selectedSnapshot: null, productionHours: 24, renderToken: 0, objectMode: 'planet', activeTab: 'overview' };
 const $ = s => document.querySelector(s); const nf = new Intl.NumberFormat('de-DE');
+const percentFmt = value => Number(value || 0).toLocaleString('de-DE', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 3
+});
+
 const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
 const fmt = v => Number.isFinite(Number(v)) ? nf.format(Math.trunc(Number(v))) : '–';
 const prodFmt = v => {
@@ -25,26 +30,96 @@ const LIFEFORM_TECH_NAMES = {
 };
 function technologyName(t) { const raw = String(t.name || t.technology_name || '').trim(); const id = String(t.technology_id); if (raw && !/^Technologie\s+\d+$/i.test(raw)) return raw; return LIFEFORM_TECH_NAMES[id] || raw || `Technologie ${id}` }
 let heightFrame = 0;
-function notifyParentHeight() { if (window.parent === window) return; const main = document.querySelector('main'); const height = Math.ceil((main?.getBoundingClientRect().bottom || document.body.scrollHeight) + 16); if (Math.abs(height - heightFrame) < 2) return; heightFrame = height; window.parent.postMessage({ type: 'ogame-dashboard-height', height }, window.location.origin) }
-async function json(path) { const r = await fetch(path, { cache: 'no-store' }); if (!r.ok) throw Error(`${path}: HTTP ${r.status}`); return r.json() }
-function accountKey(a) { return `${a.player_id}|${a.universe}` }
-function account() { return state.summary.accounts.find(a => accountKey(a) === state.selectedAccount) }
-function localDay(v) { const d = new Date(v); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
-function dailySnapshots(a) {
-  const all = state.snapshots
-    .filter(s => s.player_id === a.player_id && s.universe === a.universe)
-    .sort((x, y) => x.created_at.localeCompare(y.created_at));
+function measuredDocumentHeight() {
+  const body = document.body;
+  const root = document.documentElement;
+  const main = document.querySelector('main');
+  const footer = document.querySelector('footer');
+  const bottom = Math.max(
+    main?.getBoundingClientRect().bottom || 0,
+    footer?.getBoundingClientRect().bottom || 0
+  );
+
+  return Math.ceil(Math.max(
+    body?.scrollHeight || 0,
+    body?.offsetHeight || 0,
+    root?.scrollHeight || 0,
+    root?.offsetHeight || 0,
+    bottom
+  ) + 4);
+}
+
+function notifyParentHeight(force = false) {
+  if (window.parent === window) return;
+
+  const height = measuredDocumentHeight();
+  if (!force && Math.abs(height - heightFrame) < 2) return;
+
+  heightFrame = height;
+  window.parent.postMessage(
+    { type: 'ogame-dashboard-height', height },
+    window.location.origin
+  );
+}
+
+function scheduleHeightMeasurements() {
+  requestAnimationFrame(() => notifyParentHeight(true));
+  window.setTimeout(() => notifyParentHeight(true), 80);
+  window.setTimeout(() => notifyParentHeight(true), 240);
+  window.setTimeout(() => notifyParentHeight(true), 600);
+}
+
+function accountKey(account) {
+  return `${String(account?.universe || '').toLowerCase()}:${String(account?.player_id ?? '')}`;
+}
+
+function account() {
+  const accounts = state.summary?.accounts || [];
+  return accounts.find(item => accountKey(item) === state.selectedAccount) || accounts[0] || null;
+}
+
+function viennaDay(value) {
+  if (!value) return '';
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Vienna',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date(value));
+
+  const year = parts.find(part => part.type === 'year')?.value;
+  const month = parts.find(part => part.type === 'month')?.value;
+  const day = parts.find(part => part.type === 'day')?.value;
+  return year && month && day ? `${year}-${month}-${day}` : '';
+}
+
+function dailySnapshots(selectedAccount) {
+  if (!selectedAccount) return [];
+
+  const matching = (state.snapshots || [])
+    .filter(snapshot =>
+      String(snapshot.player_id) === String(selectedAccount.player_id) &&
+      String(snapshot.universe || '').toLowerCase() === String(selectedAccount.universe || '').toLowerCase()
+    )
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
   const byDay = new Map();
-  for (const snapshot of all) {
-    const day = localDay(snapshot.created_at);
-    const group = byDay.get(day) || [];
-    group.push(snapshot);
-    byDay.set(day, group);
+  for (const snapshot of matching) {
+    const day = viennaDay(snapshot.created_at);
+    if (!day) continue;
+    const entries = byDay.get(day) || [];
+    entries.push(snapshot);
+    byDay.set(day, entries);
   }
-  const today = localDay(new Date().toISOString());
+
+  const today = viennaDay(new Date());
   return [...byDay.entries()]
-    .map(([day, group]) => day === today ? group.at(-1) : group[0])
-    .sort((x, y) => y.created_at.localeCompare(x.created_at));
+    .sort(([dayA], [dayB]) => dayB.localeCompare(dayA))
+    .map(([day, entries]) => {
+      entries.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      return day === today ? entries.at(-1) : entries[0];
+    })
+    .filter(Boolean);
 }
 function selectedSnapshot(a) { const daily = dailySnapshots(a); return daily.find(s => s.snapshot_id === state.selectedSnapshot) || daily[0] }
 function previousDailySnapshot(a, s) { const daily = dailySnapshots(a); const i = daily.findIndex(x => x.snapshot_id === s.snapshot_id); return i >= 0 ? daily[i + 1] || null : null }
@@ -139,6 +214,7 @@ const TAB_LABELS = {
   overview: 'Übersicht',
   buildings: 'Versorgung',
   research: 'Forschung',
+  lifeform: 'Lebensform',
   facilities: 'Anlagen',
   ships: 'Flotte',
   defenses: 'Verteidigung',
@@ -210,6 +286,10 @@ function celestialCard(slot, prods, techRows) {
     </button>
 
     <div class="card-stats${moonMode ? ' moon-card-stats' : ''}">${stats}</div>
+    ${!moonMode && !missingMoon ? `<div class="lf-building-card-bonus" title="Lokaler Bonus aus Lebensformgebäuden">
+      <span>LF-Gebäude</span>
+      <strong>${effectText(localLifeformBuildingSummary(planet.planet_id, techRows))}</strong>
+    </div>` : ''}
   </article>`;
 }
 
@@ -253,7 +333,7 @@ function updateTabs() {
   if (modeLabel) modeLabel.textContent = state.objectMode === 'moon' ? 'Monde' : 'Planeten';
 
   const table = $('#empireTable');
-  if (table) table.classList.toggle('show-bonus', state.activeTab === 'research');
+  if (table) table.classList.toggle('show-bonus', state.activeTab === 'research' || state.activeTab === 'lifeform');
 }
 
 function switchObjectMode() {
@@ -329,6 +409,33 @@ function rowsForActiveTab(options) {
       return technologyRows('ships', activeObjects, techRows, travelling, normalTech, 'ships', previousTechRows, hasPrevious);
     case 'defenses':
       return technologyRows('defenses', activeObjects, techRows, travelling, normalTech, 'defenses', previousTechRows, hasPrevious);
+    case 'lifeform': {
+      let rows = '';
+      const activeRace = currentLifeformRace(activeObjects, techRows);
+      for (const race of LIFEFORM_RACES) {
+        const buildings = technologyRows(
+          'lifeform_buildings',
+          activeObjects,
+          techRows,
+          travelling,
+          lifeformPart(race.prefix, 'buildings'),
+          `lfb_${race.prefix}`,
+          previousTechRows,
+          hasPrevious
+        );
+        if (!buildings) continue;
+        const expanded = race.name === activeRace;
+        rows += `<tr class="lf-race-row ${expanded ? 'expanded' : 'collapsed'}" data-lf-race="${race.prefix}">
+          <td colspan="999"><button type="button" class="lf-race-toggle" data-lf-toggle="${race.prefix}" data-lf-group="lfb_${race.prefix}">
+            <span>${expanded ? '▾' : '▸'}</span>${esc(race.name)} · Gebäude
+          </button></td>
+        </tr>`;
+        rows += expanded
+          ? buildings
+          : buildings.replaceAll('<tr class="data-row"', '<tr class="data-row lf-hidden-row"');
+      }
+      return rows;
+    }
     case 'research': {
       let rows = technologyRows('research', activeObjects, techRows, travelling, normalTech, 'research', previousTechRows, hasPrevious);
       const activeRace = currentLifeformRace(activeObjects, techRows);
@@ -337,7 +444,7 @@ function rowsForActiveTab(options) {
         if (!lfResearch) continue;
         const expanded = race.name === activeRace;
         rows += `<tr class="lf-race-row ${expanded ? 'expanded' : 'collapsed'}" data-lf-race="${race.prefix}">
-          <td colspan="999"><button type="button" class="lf-race-toggle" data-lf-toggle="${race.prefix}"><span>${expanded ? '▾' : '▸'}</span>${esc(race.name)}</button></td>
+          <td colspan="999"><button type="button" class="lf-race-toggle" data-lf-toggle="${race.prefix}" data-lf-group="lf_${race.prefix}"><span>${expanded ? '▾' : '▸'}</span>${esc(race.name)}</button></td>
         </tr>`;
         rows += expanded ? lfResearch : lfResearch.replaceAll('<tr class="data-row"', '<tr class="data-row lf-hidden-row"');
       }
@@ -358,7 +465,11 @@ function technologyRows(category, planets, techRows, travelling, predicate = () 
   const byPlanet = new Map(planets.map(p => [p.planet_id, new Map()])); const previousByPlanet = new Map(planets.map(p => [p.planet_id, new Map()])); const accountValues = new Map(); const previousAccountValues = new Map(); const previousTotals = new Map();
   for (const t of previousTechRows.filter(t => t.category === category && predicate(t))) { const id = String(t.technology_id), value = Number(t.value) || 0; previousTotals.set(id, (previousTotals.get(id) || 0) + value); if (t.planet_id == null) { const old = previousAccountValues.get(id); if (old === undefined || value > old) previousAccountValues.set(id, value) } else previousByPlanet.get(t.planet_id)?.set(id, value) }
   for (const t of rows) { if (t.planet_id == null) { const old = accountValues.get(String(t.technology_id)); if (!old || Number(t.value) > Number(old.value)) accountValues.set(String(t.technology_id), t) } else byPlanet.get(t.planet_id)?.set(String(t.technology_id), t) }
-  return defs.map(d => { const accountValue = Number(accountValues.get(d.id)?.value || 0); const previousAccountValue = Number(previousAccountValues.get(d.id) || 0); const vals = planets.map(p => { const own = byPlanet.get(p.planet_id)?.get(d.id); return own ? Number(own.value || 0) : (category === 'research' && accountValue ? accountValue : 0) }); const previousVals = planets.map(p => { const own = previousByPlanet.get(p.planet_id)?.get(d.id); return own !== undefined ? Number(own || 0) : (category === 'research' && previousAccountValue ? previousAccountValue : 0) }); const max = Math.max(...vals, accountValue, 0), sum = vals.reduce((a, b) => a + b, 0), avg = vals.length ? sum / vals.length : 0; const moving = category === 'ships' ? shipValue(travelling, d.name, d.id) : 0; const total = category === 'research' ? (accountValue || max) : sum + moving; const prev = category === 'research' ? previousAccountValue : (previousTotals.get(d.id) || 0); const showCellDelta = category !== 'ships'; return `<tr class="data-row" data-group="${groupKey}"><td class="label-col"><span class="tech-label">${esc(d.name)}</span></td>${vals.map((v, i) => `<td class="${planets[i]?.is_placeholder ? 'missing-moon-cell ' : ''}${v === 0 ? 'zero ' : ''}${v === max && max > 0 ? 'high' : ''}"><span class="value-with-delta">${fmt(v)} ${showCellDelta ? deltaHtml(v, hasPrevious ? previousVals[i] : null, fmt) : ''}</span></td>`).join('')}<td class="summary-col">${category === 'ships' || category === 'defenses' ? fmt(avg) : avg.toLocaleString('de-DE', { maximumFractionDigits: 1 })}</td><td class="travelling-col bonus-col">${category === 'lifeform_research' ? lifeformBonusText(d.id, sum) : (category === 'research' ? normalResearchBonusText(d.id, total) : '–')}</td><td class="summary-col"><span class="value-with-delta">${fmt(total)} ${category === 'ships' ? '' : deltaHtml(total, hasPrevious ? prev : null, fmt)}</span></td></tr>` }).join('')
+  return defs.map(d => { const accountValue = Number(accountValues.get(d.id)?.value || 0); const previousAccountValue = Number(previousAccountValues.get(d.id) || 0); const vals = planets.map(p => { const own = byPlanet.get(p.planet_id)?.get(d.id); return own ? Number(own.value || 0) : (category === 'research' && accountValue ? accountValue : 0) }); const previousVals = planets.map(p => { const own = previousByPlanet.get(p.planet_id)?.get(d.id); return own !== undefined ? Number(own || 0) : (category === 'research' && previousAccountValue ? previousAccountValue : 0) }); const max = Math.max(...vals, accountValue, 0), sum = vals.reduce((a, b) => a + b, 0), avg = vals.length ? sum / vals.length : 0; const moving = category === 'ships' ? shipValue(travelling, d.name, d.id) : 0; const total = category === 'research' ? (accountValue || max) : sum + moving; const prev = category === 'research' ? previousAccountValue : (previousTotals.get(d.id) || 0); const showCellDelta = category !== 'ships'; return `<tr class="data-row" data-group="${groupKey}"><td class="label-col"><span class="tech-label">${esc(d.name)}</span></td>${vals.map((v, i) => `<td class="${planets[i]?.is_placeholder ? 'missing-moon-cell ' : ''}${v === 0 ? 'zero ' : ''}${v === max && max > 0 ? 'high' : ''}"><span class="value-with-delta">${fmt(v)} ${showCellDelta ? deltaHtml(v, hasPrevious ? previousVals[i] : null, fmt) : ''}</span>${category === 'lifeform_buildings' && v > 0 ? `<small class="cell-local-bonus">${lifeformBuildingBonusText(d.id, v)}</small>` : ''}</td>`).join('')}<td class="summary-col">${category === 'ships' || category === 'defenses' ? fmt(avg) : avg.toLocaleString('de-DE', { maximumFractionDigits: 1 })}</td><td class="travelling-col bonus-col">${category === 'lifeform_research'
+      ? lifeformBonusText(d.id, sum)
+      : (category === 'lifeform_buildings'
+          ? 'lokal je Planet'
+          : (category === 'research' ? normalResearchBonusText(d.id, total) : '–'))}</td><td class="summary-col"><span class="value-with-delta">${fmt(total)} ${category === 'ships' ? '' : deltaHtml(total, hasPrevious ? prev : null, fmt)}</span></td></tr>` }).join('')
 }
 function normalTech(t) { return Number(t.technology_id) < 10000 }
 const LIFEFORM_RACES = [
@@ -374,21 +485,109 @@ const LIFEFORM_BY_PREFIX = new Map(LIFEFORM_RACES.map(race => [race.prefix, race
 // damit keine erfundenen Prozentwerte ausgegeben werden.
 const LIFEFORM_RESEARCH_BONUS = {
   '11201': { text: level => `Stufe ${fmt(level)} · schnellere Lebensform-Entdeckung` },
-  '11202': { perLevel: 0.06, label: 'Metall/Kristall/Deuterium' },
+  '11202': { perLevel: 0.06, resources: ['metal','crystal','deut'], label: 'Metall/Kristall/Deuterium' },
   '11203': { text: level => `Stufe ${fmt(level)} · schnellere Zivilschiffe` },
   '11204': { text: level => `Stufe ${fmt(level)} · Spionage-/Tarnbonus` },
-  '12201': { perLevel: 0.5, label: 'Energie' },
-  '12202': { perLevel: 0.1, label: 'Metall' },
-  '12203': { perLevel: 0.08, label: 'Deuterium' },
+
+  '12201': { perLevel: 0.25, resources: ['energy'], label: 'Energie' },
+  '12202': { perLevel: 0.04, resources: ['crystal'], label: 'Kristall' },
+  '12203': { perLevel: 0.08, resources: ['deut'], label: 'Deuterium' },
   '12204': { perLevel: 0.4, label: 'Laderaum ziviler Schiffe' },
-  '12205': { perLevel: 0.08, label: 'Metall/Kristall/Deuterium' },
-  '12206': { perLevel: 0.25, label: 'Energie' },
-  '12207': { perLevel: 0.1, label: 'Metall' },
-  '12210': { perLevel: 0.08, label: 'Metall' },
-  '12211': { perLevel: 0.08, label: 'Kristall' },
-  '12212': { perLevel: 0.08, label: 'Deuterium' },
-  '13206': { perLevel: 0.06, label: 'Metall/Kristall/Deuterium' }
+  '12205': { perLevel: 0.08, resources: ['metal','crystal','deut'], label: 'Metall/Kristall/Deuterium' },
+  '12206': { perLevel: 0.25, resources: ['energy'], label: 'Energie' },
+  '12207': { perLevel: 0.08, resources: ['metal'], label: 'Metall' },
+  '12210': { perLevel: 0.08, resources: ['metal'], label: 'Metall' },
+  '12211': { perLevel: 0.08, resources: ['crystal'], label: 'Kristall' },
+  '12212': { perLevel: 0.08, resources: ['deut'], label: 'Deuterium' },
+
+  '13201': { perLevel: 0.08, resources: ['deut'], label: 'Deuterium' },
+  '13206': { perLevel: 0.06, resources: ['metal','crystal','deut'], label: 'Metall/Kristall/Deuterium' },
+
+  '14202': { perLevel: 0.08, resources: ['deut'], label: 'Deuterium' },
+  '14212': { perLevel: 0.06, resources: ['metal','crystal','deut'], label: 'Metall/Kristall/Deuterium' }
 };
+
+
+const LIFEFORM_BUILDING_BONUS = {
+  // Menschen
+  '11106': { local: true, effects: { metal: 1.5 }, label: 'Metall' },
+  '11108': { local: true, effects: { crystal: 1, deut: 1 }, label: 'Kristall/Deuterium' },
+
+  // Rock’tal
+  '12106': { local: true, effects: { metal: 2 }, label: 'Metall' },
+  '12107': { local: true, effects: { energy: 1 }, label: 'Energie' },
+  '12109': { local: true, effects: { crystal: 2 }, label: 'Kristall' },
+  '12110': { local: true, effects: { deut: 2 }, label: 'Deuterium' },
+
+  // Mechas
+  '13107': { local: true, effects: { energy: 1 }, label: 'Energie' },
+  '13110': { local: true, effects: { deut: 1.5 }, label: 'Deuterium' },
+
+  // Kaelesh
+  '14106': { local: true, effects: { energy: 1 }, label: 'Energie' }
+};
+
+function effectText(effects) {
+  const parts = [];
+  if (effects.metal) parts.push(`+${percentFmt(effects.metal)}% Metall`);
+  if (effects.crystal) parts.push(`+${percentFmt(effects.crystal)}% Kristall`);
+  if (effects.deut) parts.push(`+${percentFmt(effects.deut)}% Deuterium`);
+  if (effects.energy) parts.push(`+${percentFmt(effects.energy)}% Energie`);
+  return parts.join(' · ') || '–';
+}
+
+function lifeformBuildingEffects(technologyId, level) {
+  const def = LIFEFORM_BUILDING_BONUS[String(technologyId)];
+  if (!def || !(level > 0)) return null;
+  const effects = {};
+  for (const [key, perLevel] of Object.entries(def.effects || {})) {
+    effects[key] = Number(level) * Number(perLevel);
+  }
+  return effects;
+}
+
+function lifeformBuildingBonusText(technologyId, level) {
+  const effects = lifeformBuildingEffects(technologyId, level);
+  return effects ? effectText(effects) : '–';
+}
+
+function localLifeformBuildingSummary(objectId, techRows) {
+  const totals = { metal: 0, crystal: 0, deut: 0, energy: 0 };
+  for (const row of techRows) {
+    if (row.planet_id !== objectId || row.category !== 'lifeform_buildings') continue;
+    const effects = lifeformBuildingEffects(row.technology_id, Number(row.value) || 0);
+    if (!effects) continue;
+    for (const key of Object.keys(totals)) totals[key] += Number(effects[key] || 0);
+  }
+  return totals;
+}
+
+function empireLifeformResearchSummary(techRows) {
+  const totals = { metal: 0, crystal: 0, deut: 0, energy: 0 };
+  for (const row of techRows) {
+    if (row.category !== 'lifeform_research') continue;
+    const def = LIFEFORM_RESEARCH_BONUS[String(row.technology_id)];
+    if (!def?.perLevel || !Array.isArray(def.resources)) continue;
+    const bonus = (Number(row.value) || 0) * def.perLevel;
+    for (const resource of def.resources) {
+      if (resource in totals) totals[resource] += bonus;
+    }
+  }
+  return totals;
+}
+
+function lifeformResearchSummaryHtml(techRows) {
+  const totals = empireLifeformResearchSummary(techRows);
+  return `
+    <div class="lf-global-bonus" title="Nur Bonus aus Lebensform-Forschungen">
+      <span>LF-Forschung gesamt</span>
+      <strong>+${percentFmt(totals.metal)}% Metall</strong>
+      <strong>+${percentFmt(totals.crystal)}% Kristall</strong>
+      <strong>+${percentFmt(totals.deut)}% Deuterium</strong>
+      <strong>+${percentFmt(totals.energy)}% Energie</strong>
+    </div>
+  `;
+}
 
 function inferredLifeformName(object, techRows) {
   if (!object || object.is_placeholder) return '';
@@ -456,7 +655,7 @@ function lifeformBonusText(technologyId, totalLevel) {
   if (!def) return `Stufe ${fmt(totalLevel)} · Bonusformel noch nicht hinterlegt`;
   if (typeof def.text === 'function') return def.text(totalLevel);
   const bonus = totalLevel * def.perLevel;
-  return `+${bonus.toLocaleString('de-DE', {maximumFractionDigits:2})}% ${def.label}`;
+  return `+${percentFmt(bonus)}% ${def.label}`;
 }
 
 function lifeformPart(prefix, part) { return t => { const id = Number(t.technology_id); if (!Number.isFinite(id) || Math.floor(id / 1000) !== prefix) return false; const suffix = id % 1000; return part === 'buildings' ? (suffix >= 100 && suffix < 200) : (suffix >= 200 && suffix < 300) } }
@@ -547,9 +746,13 @@ async function render() {
     if (state.objectMode === 'moon') {
       stageTitle.textContent = 'MONDE IM VORDERGRUND';
       stageHint.textContent = 'Klicke auf den Planeten, um die Planeten anzuzeigen';
+      const lfGlobalBonus = $('#lfGlobalBonus');
+      if (lfGlobalBonus) lfGlobalBonus.innerHTML = '';
     } else {
       stageTitle.textContent = 'PLANETEN IM VORDERGRUND';
       stageHint.textContent = 'Klicke auf den Mond, um die Monde anzuzeigen';
+      const lfGlobalBonus = $('#lfGlobalBonus');
+      if (lfGlobalBonus) lfGlobalBonus.innerHTML = lifeformResearchSummaryHtml(techRows);
     }
 
     document.documentElement.style.setProperty('--card-count', String(objectSlots.length + 1));
@@ -572,18 +775,19 @@ async function render() {
     document.querySelectorAll('[data-lf-toggle]').forEach(button => {
       button.onclick = () => {
         const prefix = button.dataset.lfToggle;
+        const group = button.dataset.lfGroup || `lf_${prefix}`;
         const raceRow = button.closest('.lf-race-row');
         const isExpanded = raceRow.classList.toggle('expanded');
         raceRow.classList.toggle('collapsed', !isExpanded);
         button.querySelector('span').textContent = isExpanded ? '▾' : '▸';
-        document.querySelectorAll(`[data-group="lf_${prefix}"]`).forEach(row => row.classList.toggle('lf-hidden-row', !isExpanded));
-        requestAnimationFrame(notifyParentHeight);
+        document.querySelectorAll(`[data-group="${group}"]`).forEach(row => row.classList.toggle('lf-hidden-row', !isExpanded));
+        scheduleHeightMeasurements();
       };
     });
 
 
     if (message) message.classList.add('hidden');
-    requestAnimationFrame(notifyParentHeight);
+    scheduleHeightMeasurements();
   } catch (error) {
     if (token !== state.renderToken) return;
     if (message) {
@@ -592,7 +796,27 @@ async function render() {
     }
   }
 }
-if ('ResizeObserver' in window) new ResizeObserver(() => requestAnimationFrame(notifyParentHeight)).observe(document.documentElement); window.addEventListener('load', notifyParentHeight); window.addEventListener('resize', notifyParentHeight);
+if ('ResizeObserver' in window) {
+  const observer = new ResizeObserver(scheduleHeightMeasurements);
+  observer.observe(document.body);
+  observer.observe(document.querySelector('main'));
+}
+if ('MutationObserver' in window) {
+  new MutationObserver(scheduleHeightMeasurements).observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    characterData: true
+  });
+}
+window.addEventListener('message', event => {
+  if (event.origin !== window.location.origin) return;
+  if (event.data?.type === 'ogame-dashboard-request-height') {
+    scheduleHeightMeasurements();
+  }
+});
+window.addEventListener('load', scheduleHeightMeasurements);
+window.addEventListener('resize', scheduleHeightMeasurements);
 async function init() {
   try {
     const loaded = await window.ogameAccountDashboardDataSource.load();
@@ -618,6 +842,7 @@ async function init() {
       button.onclick = async () => {
         state.activeTab = button.dataset.tab || 'overview';
         await render();
+        scheduleHeightMeasurements();
       };
     });
 
