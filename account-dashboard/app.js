@@ -130,7 +130,7 @@ function header(slots) {
       </th>`;
     }).join('')}
     <th class="summary-col">Ø</th>
-    <th class="travelling-col">Unterwegs</th>
+    <th class="travelling-col bonus-col">Bonus</th>
     <th class="summary-col">Gesamt</th>
   </tr>`;
 }
@@ -140,7 +140,7 @@ const TAB_LABELS = {
   buildings: 'Versorgung',
   research: 'Forschung',
   facilities: 'Anlagen',
-  ships: 'Schiffswerft',
+  ships: 'Flotte',
   defenses: 'Verteidigung',
   production: 'Produktion'
 };
@@ -212,8 +212,12 @@ function celestialCard(slot, prods, techRows) {
 function renderCelestialCards(slots, prods, techRows) {
   const container = $('#celestialCards');
   if (!container) return;
-  container.innerHTML = slots.map(slot => celestialCard(slot, prods, techRows)).join('');
-
+  const switchTile = `<button type="button" class="celestial-switch-card" data-mode-switch aria-label="${state.objectMode === 'moon' ? 'Zu den Planeten wechseln' : 'Zu den Monden wechseln'}">
+    <span class="switch-orb">${state.objectMode === 'moon' ? '🌍' : '🌕'}</span>
+    <strong>${state.objectMode === 'moon' ? 'Planeten' : 'Monde'}</strong>
+    <small>Ansicht wechseln</small>
+  </button>`;
+  container.innerHTML = switchTile + slots.map(slot => celestialCard(slot, prods, techRows)).join('');
   container.querySelectorAll('[data-mode-switch]').forEach(button => {
     button.onclick = () => switchObjectMode();
   });
@@ -282,7 +286,7 @@ function overviewValueRows(slots, techRows) {
   const fieldsTotal = objects.map(object => object?.is_placeholder ? null : object?.fields_total);
   const temperature = objects.map(object => object?.is_placeholder ? '' :
     (object?.temperature_min_c == null ? '–' : `${fmt(object.temperature_min_c)} bis ${fmt(object.temperature_max_c)} °C`));
-  const lifeforms = objects.map(object => object?.is_placeholder ? '' : (object?.lifeform_name || '–'));
+  const lifeforms = objects.map(object => object?.is_placeholder ? '' : (inferredLifeformName(object, techRows) || '–'));
   const facilities = objects.map(object => object?.is_placeholder ? null : categoryTotalForObject(techRows, object.planet_id, 'facilities'));
   const ships = objects.map(object => object?.is_placeholder ? null : categoryTotalForObject(techRows, object.planet_id, 'ships'));
   const defenses = objects.map(object => object?.is_placeholder ? null : categoryTotalForObject(techRows, object.planet_id, 'defenses'));
@@ -320,14 +324,15 @@ function rowsForActiveTab(options) {
       return technologyRows('defenses', activeObjects, techRows, travelling, normalTech, 'defenses', previousTechRows, hasPrevious);
     case 'research': {
       let rows = technologyRows('research', activeObjects, techRows, travelling, normalTech, 'research', previousTechRows, hasPrevious);
+      const activeRace = currentLifeformRace(activeObjects, techRows);
       for (const race of LIFEFORM_RACES) {
-        const buildings = technologyRows('lifeform_buildings', activeObjects, techRows, travelling, lifeformPart(race.prefix, 'buildings'), 'research', previousTechRows, hasPrevious);
-        const research = technologyRows('lifeform_research', activeObjects, techRows, travelling, lifeformPart(race.prefix, 'research'), 'research', previousTechRows, hasPrevious);
-        if (buildings || research) {
-          rows += `<tr class="subsection-row"><td colspan="999">${esc(race.name)}</td></tr>`;
-          if (buildings) rows += buildings;
-          if (research) rows += research;
-        }
+        const lfResearch = technologyRows('lifeform_research', activeObjects, techRows, travelling, lifeformPart(race.prefix, 'research'), `lf_${race.prefix}`, previousTechRows, hasPrevious);
+        if (!lfResearch) continue;
+        const expanded = race.name === activeRace;
+        rows += `<tr class="lf-race-row ${expanded ? 'expanded' : 'collapsed'}" data-lf-race="${race.prefix}">
+          <td colspan="999"><button type="button" class="lf-race-toggle" data-lf-toggle="${race.prefix}"><span>${expanded ? '▾' : '▸'}</span>${esc(race.name)}</button></td>
+        </tr>`;
+        rows += lfResearch.replaceAll(`data-group="lf_${race.prefix}"`, `data-group="lf_${race.prefix}" class="${expanded ? '' : 'lf-hidden-row'}"`);
       }
       return rows;
     }
@@ -346,7 +351,7 @@ function technologyRows(category, planets, techRows, travelling, predicate = () 
   const byPlanet = new Map(planets.map(p => [p.planet_id, new Map()])); const previousByPlanet = new Map(planets.map(p => [p.planet_id, new Map()])); const accountValues = new Map(); const previousAccountValues = new Map(); const previousTotals = new Map();
   for (const t of previousTechRows.filter(t => t.category === category && predicate(t))) { const id = String(t.technology_id), value = Number(t.value) || 0; previousTotals.set(id, (previousTotals.get(id) || 0) + value); if (t.planet_id == null) { const old = previousAccountValues.get(id); if (old === undefined || value > old) previousAccountValues.set(id, value) } else previousByPlanet.get(t.planet_id)?.set(id, value) }
   for (const t of rows) { if (t.planet_id == null) { const old = accountValues.get(String(t.technology_id)); if (!old || Number(t.value) > Number(old.value)) accountValues.set(String(t.technology_id), t) } else byPlanet.get(t.planet_id)?.set(String(t.technology_id), t) }
-  return defs.map(d => { const accountValue = Number(accountValues.get(d.id)?.value || 0); const previousAccountValue = Number(previousAccountValues.get(d.id) || 0); const vals = planets.map(p => { const own = byPlanet.get(p.planet_id)?.get(d.id); return own ? Number(own.value || 0) : (category === 'research' && accountValue ? accountValue : 0) }); const previousVals = planets.map(p => { const own = previousByPlanet.get(p.planet_id)?.get(d.id); return own !== undefined ? Number(own || 0) : (category === 'research' && previousAccountValue ? previousAccountValue : 0) }); const max = Math.max(...vals, accountValue, 0), sum = vals.reduce((a, b) => a + b, 0), avg = vals.length ? sum / vals.length : 0; const moving = category === 'ships' ? shipValue(travelling, d.name, d.id) : 0; const total = category === 'research' ? (accountValue || max) : sum + moving; const prev = category === 'research' ? previousAccountValue : (previousTotals.get(d.id) || 0); const showCellDelta = category !== 'ships'; return `<tr class="data-row" data-group="${groupKey}"><td class="label-col"><span class="tech-label">${esc(d.name)}</span></td>${vals.map((v, i) => `<td class="${planets[i]?.is_placeholder ? 'missing-moon-cell ' : ''}${v === 0 ? 'zero ' : ''}${v === max && max > 0 ? 'high' : ''}"><span class="value-with-delta">${fmt(v)} ${showCellDelta ? deltaHtml(v, hasPrevious ? previousVals[i] : null, fmt) : ''}</span></td>`).join('')}<td class="summary-col">${category === 'ships' || category === 'defenses' ? fmt(avg) : avg.toLocaleString('de-DE', { maximumFractionDigits: 1 })}</td><td class="travelling-col ${moving ? 'high' : 'zero'}">${category === 'ships' ? (moving ? fmt(moving) : '–') : '–'}</td><td class="summary-col"><span class="value-with-delta">${fmt(total)} ${category === 'ships' ? '' : deltaHtml(total, hasPrevious ? prev : null, fmt)}</span></td></tr>` }).join('')
+  return defs.map(d => { const accountValue = Number(accountValues.get(d.id)?.value || 0); const previousAccountValue = Number(previousAccountValues.get(d.id) || 0); const vals = planets.map(p => { const own = byPlanet.get(p.planet_id)?.get(d.id); return own ? Number(own.value || 0) : (category === 'research' && accountValue ? accountValue : 0) }); const previousVals = planets.map(p => { const own = previousByPlanet.get(p.planet_id)?.get(d.id); return own !== undefined ? Number(own || 0) : (category === 'research' && previousAccountValue ? previousAccountValue : 0) }); const max = Math.max(...vals, accountValue, 0), sum = vals.reduce((a, b) => a + b, 0), avg = vals.length ? sum / vals.length : 0; const moving = category === 'ships' ? shipValue(travelling, d.name, d.id) : 0; const total = category === 'research' ? (accountValue || max) : sum + moving; const prev = category === 'research' ? previousAccountValue : (previousTotals.get(d.id) || 0); const showCellDelta = category !== 'ships'; return `<tr class="data-row" data-group="${groupKey}"><td class="label-col"><span class="tech-label">${esc(d.name)}</span></td>${vals.map((v, i) => `<td class="${planets[i]?.is_placeholder ? 'missing-moon-cell ' : ''}${v === 0 ? 'zero ' : ''}${v === max && max > 0 ? 'high' : ''}"><span class="value-with-delta">${fmt(v)} ${showCellDelta ? deltaHtml(v, hasPrevious ? previousVals[i] : null, fmt) : ''}</span></td>`).join('')}<td class="summary-col">${category === 'ships' || category === 'defenses' ? fmt(avg) : avg.toLocaleString('de-DE', { maximumFractionDigits: 1 })}</td><td class="travelling-col bonus-col">${category === 'lifeform_research' ? lifeformBonusText(d.id, sum) : '–'}</td><td class="summary-col"><span class="value-with-delta">${fmt(total)} ${category === 'ships' ? '' : deltaHtml(total, hasPrevious ? prev : null, fmt)}</span></td></tr>` }).join('')
 }
 function normalTech(t) { return Number(t.technology_id) < 10000 }
 const LIFEFORM_RACES = [
@@ -355,6 +360,50 @@ const LIFEFORM_RACES = [
   { name: 'Mechas', prefix: 13 },
   { name: 'Kaelesh', prefix: 14 }
 ];
+const LIFEFORM_BY_PREFIX = new Map(LIFEFORM_RACES.map(race => [race.prefix, race.name]));
+
+// Verifizierte bzw. bereits im Projekt verwendete Basisboni pro Stufe.
+// Nicht hinterlegte Technologien zeigen weiterhin ihre Gesamtstufe an,
+// damit keine erfundenen Prozentwerte ausgegeben werden.
+const LIFEFORM_RESEARCH_BONUS = {
+  '11202': { perLevel: 0.06, label: 'Metall/Kristall/Deut' },
+  '12205': { perLevel: 0.08, label: 'Metall/Kristall/Deut' },
+  '12206': { perLevel: 0.25, label: 'Energie' },
+  '12210': { perLevel: 0.08, label: 'Metall' },
+  '12211': { perLevel: 0.08, label: 'Kristall' },
+  '12212': { perLevel: 0.08, label: 'Deuterium' }
+};
+
+function inferredLifeformName(object, techRows) {
+  if (object?.lifeform_name) return object.lifeform_name;
+  if (!object || object.is_placeholder) return '';
+  const prefixes = techRows
+    .filter(row => row.planet_id === object.planet_id && (row.category === 'lifeform_buildings' || row.category === 'lifeform_research'))
+    .map(row => Math.floor(Number(row.technology_id) / 1000))
+    .filter(prefix => LIFEFORM_BY_PREFIX.has(prefix));
+  if (!prefixes.length) return '';
+  const counts = new Map();
+  for (const prefix of prefixes) counts.set(prefix, (counts.get(prefix) || 0) + 1);
+  const [prefix] = [...counts.entries()].sort((a,b) => b[1]-a[1])[0];
+  return LIFEFORM_BY_PREFIX.get(prefix) || '';
+}
+
+function currentLifeformRace(objects, techRows) {
+  const counts = new Map();
+  for (const object of objects) {
+    const name = inferredLifeformName(object, techRows);
+    if (name) counts.set(name, (counts.get(name) || 0) + 1);
+  }
+  return [...counts.entries()].sort((a,b) => b[1]-a[1])[0]?.[0] || null;
+}
+
+function lifeformBonusText(technologyId, totalLevel) {
+  const def = LIFEFORM_RESEARCH_BONUS[String(technologyId)];
+  if (!def) return totalLevel > 0 ? `Σ ${fmt(totalLevel)}` : '–';
+  const bonus = totalLevel * def.perLevel;
+  return `+${bonus.toLocaleString('de-DE', {maximumFractionDigits:2})}% ${def.label}`;
+}
+
 function lifeformPart(prefix, part) { return t => { const id = Number(t.technology_id); if (!Number.isFinite(id) || Math.floor(id / 1000) !== prefix) return false; const suffix = id % 1000; return part === 'buildings' ? (suffix >= 100 && suffix < 200) : (suffix >= 200 && suffix < 300) } }
 function subheading(label, key) { return `<tr class="subsection-row" data-group="${key}"><td colspan="999">${esc(label)}</td></tr>` }
 function lifeformRaceSection(race, planets, techRows, travelling, previousTechRows, hasPrevious) { const key = `lifeform_${race.prefix}`; const buildings = technologyRows('lifeform_buildings', planets, techRows, travelling, lifeformPart(race.prefix, 'buildings'), key, previousTechRows, hasPrevious); const research = technologyRows('lifeform_research', planets, techRows, travelling, lifeformPart(race.prefix, 'research'), key, previousTechRows, hasPrevious); if (!buildings && !research) return ''; let rows = ''; if (buildings) rows += subheading('Gebäude', key) + buildings; if (research) rows += subheading('Forschung', key) + research; return section(race.name, key, rows) }
@@ -439,22 +488,16 @@ async function render() {
 
     const stageTitle = $('#stageTitle');
     const stageHint = $('#stageHint');
-    const modeIcon = $('#objectModeIcon');
-    const masterToggle = $('#objectModeToggle');
 
     if (state.objectMode === 'moon') {
       stageTitle.textContent = 'MONDE IM VORDERGRUND';
       stageHint.textContent = 'Klicke auf den Planeten, um die Planeten anzuzeigen';
-      modeIcon.textContent = '🌍';
-      masterToggle.setAttribute('aria-label', 'Zur Planetenansicht wechseln');
     } else {
       stageTitle.textContent = 'PLANETEN IM VORDERGRUND';
       stageHint.textContent = 'Klicke auf den Mond, um die Monde anzuzeigen';
-      modeIcon.textContent = '🌕';
-      masterToggle.setAttribute('aria-label', 'Zur Mondansicht wechseln');
     }
 
-    document.documentElement.style.setProperty('--card-count', String(objectSlots.length));
+    document.documentElement.style.setProperty('--card-count', String(objectSlots.length + 1));
     renderCelestialCards(objectSlots, prods, techRows);
     updateTabs();
 
@@ -471,7 +514,19 @@ async function render() {
     });
     $('#empireBody').innerHTML = body || `<tr><td colspan="999" class="empty-detail">Für diesen Bereich sind keine Daten vorhanden.</td></tr>`;
 
-    if (masterToggle) masterToggle.onclick = switchObjectMode;
+    document.querySelectorAll('[data-lf-toggle]').forEach(button => {
+      button.onclick = () => {
+        const prefix = button.dataset.lfToggle;
+        const raceRow = button.closest('.lf-race-row');
+        const isExpanded = raceRow.classList.toggle('expanded');
+        raceRow.classList.toggle('collapsed', !isExpanded);
+        button.querySelector('span').textContent = isExpanded ? '▾' : '▸';
+        document.querySelectorAll(`[data-group="lf_${prefix}"]`).forEach(row => row.classList.toggle('lf-hidden-row', !isExpanded));
+        requestAnimationFrame(notifyParentHeight);
+      };
+    });
+
+
     if (message) message.classList.add('hidden');
     requestAnimationFrame(notifyParentHeight);
   } catch (error) {
