@@ -1,23 +1,49 @@
-# OGame Imperiumsübersicht v8.4.0
+<!doctype html>
+<html lang="de">
 
-## Änderungen
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#07111f">
+    <title>Spieler-Historie</title>
+    <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="auth.css">
+</head>
 
-- `account.html` ist jetzt eine eigene, aufgeräumte Seite für die Imperiumsübersicht.
-- Der alte Bereich „Accountdaten“ wurde entfernt.
-- Die Umschaltung „Dashboard“ wurde entfernt; die neue Ansicht ist direkt geöffnet.
-- Die Datenquellen-Auswahl wurde vollständig entfernt.
-- Die private Accountansicht verwendet fest Supabase.
-- In der Hauptnavigation heißt der Link nun „Imperiumsübersicht“.
-- In den Planetenkarten werden große SVG-Icons für Metall, Kristall und Deuterium verwendet.
-- Die Produktionswerte in den Karten sind größer und schneller lesbar.
-- Die Lebensform wird primär anhand der tatsächlich gebauten Lebensformgebäude erkannt. Dadurch wird Rock’tal nicht mehr fälschlich als Menschen angezeigt.
-- Die Bonusspalte ist nur noch im Reiter „Forschung“ sichtbar.
-- Normale Forschungen zeigen bekannte aktuelle Boni, z. B. Laderaum, Panzerung, Waffen, Schilde, Triebwerke und Plasmaförderung.
-- Lebensformforschungen bleiben je Volk einklappbar; die aktuelle Lebensform wird geöffnet.
-- „Schiffswerft“ heißt „Flotte“.
+<body class="auth-protected">
+    <header class="hero">
+        <div class="hero-inner">
+            <p class="eyebrow">Player History</p>
+            <h1>Spieler-Historie</h1>
+            <p class="muted">Alle aufgezeichneten Tageswerte seit Beginn</p>
+        </div>
+    </header>
+    <nav class="toolbar">
+        <div class="range-tabs"><a class="nav-link" href="index.html">← Dashboard</a><a class="nav-link" href="messages.html">Nachrichten</a><a class="nav-link" href="account.html">Accountdaten</a></div>
+        <div class="toolbar-actions"><select id="historyPlayer"></select></div>
+    <button type="button" data-auth-logout>Abmelden</button></nav>
+    <main>
+        <section id="historySummary" class="summary-grid"></section>
+        <section class="panel">
+            <div class="section-head">
+                <div>
+                    <h2 id="historyTitle">Historie</h2>
+                    <p class="muted">Jede Spalte entspricht einem Snapshot-Tag</p>
+                </div>
+            </div>
+            <div class="table-wrap history-table-wrap">
+                <table class="history-table">
+                    <thead id="historyHead"></thead>
+                    <tbody id="historyBody"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+    <footer id="footer">Wird geladen …</footer>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="auth.js"></script>
+  <script src="player.js"></script>
+</body>
 
-## Installation
-
-Den Inhalt dieses Projektordners über den aktuellen Repository-Inhalt kopieren und veröffentlichen.
-
-Wichtig: `account-data.json` und `account-data-source.js` wurden absichtlich entfernt, da sie nur zur alten Accountdaten-Ansicht gehörten.
+</html>

@@ -1,12 +1,39 @@
-const frame = document.querySelector("#accountOverviewFrame");
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
+  <title>OGame Imperiumsübersicht</title>
+  <link rel="icon" type="image/svg+xml" href="./assets/ogame-favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/ogame-favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="./assets/ogame-favicon-16.png">
+  <link rel="shortcut icon" href="./favicon.ico">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="auth.css">
+  <link rel="stylesheet" href="account.css">
+</head>
+<body class="auth-protected account-overview-page">
+  <div id="app">
+    <nav class="toolbar account-overview-toolbar">
+      <div class="range-tabs">
+        <a class="nav-link" href="index.html">Allianzstatistik</a>
+        <a class="nav-link" href="player.html">Spieler-Historie</a>
+        <a class="nav-link" href="hall-of-fame.html">Hall of Fame</a>
+        <a class="nav-link" href="messages.html">Nachrichten</a>
+        <span class="nav-link active">Imperiumsübersicht</span>
+      </div>
+      <button type="button" data-auth-logout>Abmelden</button>
+    </nav>
 
-function applyOverviewHeight(height) {
-  const value = Math.max(560, Math.ceil(Number(height) || 0));
-  if (frame && value) frame.style.height = `${value}px`;
-}
+    <main class="account-overview-main">
+      <iframe id="accountOverviewFrame" title="Private OGame Imperiumsübersicht" src="account-dashboard/index.html?v=8.4.0"></iframe>
+    </main>
+  </div>
 
-window.addEventListener("message", event => {
-  if (event.origin !== window.location.origin) return;
-  if (event.data?.type !== "ogame-dashboard-height") return;
-  applyOverviewHeight(event.data.height);
-});
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="auth.js"></script>
+  <script src="account.js?v=8.4.0"></script>
+</body>
+</html>

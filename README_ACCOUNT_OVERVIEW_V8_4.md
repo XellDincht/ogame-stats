@@ -1,189 +1,336 @@
 (() => {
-  const STORAGE_KEY = "ogame.dashboard.dataSource";
-  const VALID_SOURCES = new Set(["local", "supabase"]);
-  const UNIVERSE = "s282-de";
-  const ALLIANCE_ID = 500219;
+  const BUCKET = "message_images";
+  const $ = selector => document.querySelector(selector);
+  const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  let auth = null;
+  let editing = null;
+  let selectedFile = null;
+  let objectUrl = null;
+  let playerAliasMap = new Map();
 
-  function getSource() {
-    const value = localStorage.getItem(STORAGE_KEY);
-    return VALID_SOURCES.has(value) ? value : "local";
+  function status(text, error = false) {
+    const node = $("#messageStatus");
+    node.textContent = text;
+    node.classList.toggle("negative", error);
   }
 
-  function setSource(value) {
-    if (!VALID_SOURCES.has(value)) throw new Error(`Unbekannte Datenquelle: ${value}`);
-    localStorage.setItem(STORAGE_KEY, value);
+  function displayName() {
+    return auth?.profile?.ogame_name || auth?.profile?.display_name || auth?.user?.email || "Unbekannt";
   }
 
-  async function loadLocalData() {
-    const response = await fetch("data.json", { cache: "no-store" });
-    if (!response.ok) throw new Error(`data.json konnte nicht geladen werden (${response.status}).`);
-    return response.json();
+  function normalizePlayerName(value) {
+    return String(value || "").trim().replace(/\s+/g, " ");
   }
 
-  async function selectAll(query, label) {
-    const { data, error } = await query;
+
+  function playerKey(value) {
+    return normalizePlayerName(value).toLocaleLowerCase("de-DE");
+  }
+
+  function resolvePlayerName(value) {
+    const normalized = normalizePlayerName(value);
+    return playerAliasMap.get(playerKey(normalized)) || normalized;
+  }
+
+  async function loadPlayers() {
+    const { data, error } = await window.ogameSupabase
+      .from("players")
+      .select("display_name, aliases");
+
     if (error) {
-      const details = [error.message, error.details, error.hint].filter(Boolean).join(" · ");
-      throw new Error(`${label}: ${details || "Unbekannter Supabase-Fehler"}`);
+      console.warn("Spieler-Aliase konnten nicht geladen werden:", error.message);
+      playerAliasMap = new Map();
+      return;
     }
-    return data || [];
+
+    const nextMap = new Map();
+    for (const player of data || []) {
+      const display = normalizePlayerName(player.display_name);
+      if (!display) continue;
+
+      // Auch der Anzeigename selbst gilt automatisch als Alias.
+      const aliases = [display, ...(Array.isArray(player.aliases) ? player.aliases : [])];
+      for (const alias of aliases) {
+        const key = playerKey(alias);
+        if (key) nextMap.set(key, display);
+      }
+    }
+    playerAliasMap = nextMap;
   }
 
-  function membershipDays(joinedAt, leftAt) {
-    if (!joinedAt) return 0;
-    const start = new Date(joinedAt);
-    const end = leftAt ? new Date(leftAt) : new Date();
-    return Math.max(0, Math.floor((end - start) / 86400000) + 1);
-  }
+  function parseMoonAttempt(rawText) {
+    const raw = String(rawText || "").replace(/\r/g, "").trim();
+    const lines = raw.split("\n").map(line => line.trim()).filter(Boolean);
 
-  async function loadSupabaseData() {
-    const client = window.ogameSupabase;
-    if (!client) throw new Error("Supabase-Client ist noch nicht initialisiert.");
+    const titleMatch = raw.match(/Mondversuch\s*#\s*(\d+)/i);
+    const dateMatch = raw.match(/(\d{2}\.\d{2}\.\d{4})\s+(\d{2}:\d{2}:\d{2})/);
+    const routeMatch = raw.match(/Von\s+([0-9]+[.:][0-9]+[.:][0-9]+)(?:\s+M)?\s*\(([^)]+)\)\s*-+>\s*auf\s+([0-9]+[.:][0-9]+[.:][0-9]+)(?:\s+M)?\s*\(([^)]+)\)/i);
+    const senderMatch = raw.match(/Rundmail\s+von\s*\n\s*([^\n]+)/i) || raw.match(/Von:\s*\n\s*([^\n]+)/i);
 
-    const { data: sessionData, error: sessionError } = await client.auth.getSession();
-    if (sessionError) throw new Error(`Supabase-Session: ${sessionError.message}`);
-    if (!sessionData.session) throw new Error("Keine gültige Supabase-Anmeldung vorhanden.");
-
-    const [players, snapshots, allianceHistory, memberships, localFallback] = await Promise.all([
-      selectAll(
-        client.from("ogame_public_players")
-          .select("universe, player_id, player_name, status, alliance_id, first_seen_at, last_seen_at, is_active")
-          .eq("universe", UNIVERSE)
-          .order("player_id", { ascending: true }),
-        "Spieler"
-      ),
-      selectAll(
-        client.from("ogame_player_snapshots")
-          .select("*")
-          .eq("universe", UNIVERSE)
-          .order("snapshot_date", { ascending: true })
-          .order("player_id", { ascending: true }),
-        "Spieler-Snapshots"
-      ),
-      selectAll(
-        client.from("ogame_alliance_snapshots")
-          .select("*")
-          .eq("universe", UNIVERSE)
-          .eq("alliance_id", ALLIANCE_ID)
-          .order("snapshot_date", { ascending: true }),
-        "Allianz-Snapshots"
-      ),
-      selectAll(
-        client.from("ogame_alliance_memberships")
-          .select("id, universe, alliance_id, player_id, joined_at, left_at, last_seen_at, is_active")
-          .eq("universe", UNIVERSE)
-          .eq("alliance_id", ALLIANCE_ID)
-          .order("joined_at", { ascending: true }),
-        "Mitgliedschaften"
-      ),
-      loadLocalData().catch(() => null)
-    ]);
-
-    const snapshotsByPlayer = new Map();
-    for (const row of snapshots) {
-      const list = snapshotsByPlayer.get(String(row.player_id)) || [];
-      list.push({
-        date: row.snapshot_date,
-        collected_at: row.collected_at,
-        api_timestamp: row.api_timestamp,
-        total_points: row.total_points,
-        total_rank: row.total_rank,
-        economy_points: row.economy_points,
-        economy_rank: row.economy_rank,
-        research_points: row.research_points,
-        research_rank: row.research_rank,
-        military_points: row.military_points,
-        military_rank: row.military_rank,
-        military_lost_points: row.military_lost_points,
-        military_lost_rank: row.military_lost_rank,
-        military_built_points: row.military_built_points,
-        military_built_rank: row.military_built_rank,
-        military_destroyed_points: row.military_destroyed_points,
-        military_destroyed_rank: row.military_destroyed_rank,
-        honor_points: row.honor_points,
-        honor_rank: row.honor_rank,
-        ships: row.ships
-      });
-      snapshotsByPlayer.set(String(row.player_id), list);
+    let info = raw;
+    if (titleMatch) {
+      const titleIndex = raw.search(/Mondversuch\s*#\s*\d+/i);
+      if (titleIndex >= 0) info = raw.slice(titleIndex);
     }
-
-    const membershipsByPlayer = new Map();
-    for (const row of memberships) {
-      const list = membershipsByPlayer.get(String(row.player_id)) || [];
-      list.push({
-        id: row.id,
-        joined_at: row.joined_at,
-        left_at: row.left_at,
-        last_seen_at: row.last_seen_at,
-        is_active: row.is_active,
-        days: membershipDays(row.joined_at, row.left_at)
-      });
-      membershipsByPlayer.set(String(row.player_id), list);
+    if (routeMatch) {
+      const routeText = routeMatch[0];
+      const routeIndex = info.indexOf(routeText);
+      if (routeIndex >= 0) info = info.slice(routeIndex + routeText.length);
     }
+    info = info.replace(/^\s*[.\-–—:]+\s*/, "").trim();
 
-    const mappedPlayers = players.map(row => {
-      const playerMemberships = membershipsByPlayer.get(String(row.player_id)) || [];
-      const activeMembership = [...playerMemberships].reverse().find(item => item.is_active) || playerMemberships.at(-1) || null;
-      return {
-        id: row.player_id,
-        name: row.player_name,
-        status: row.status || "",
-        first_seen: row.first_seen_at,
-        last_seen: row.last_seen_at,
-        is_active: row.is_active,
-        membership: activeMembership,
-        memberships: playerMemberships,
-        membership_days: playerMemberships.reduce((sum, item) => sum + item.days, 0),
-        snapshots: snapshotsByPlayer.get(String(row.player_id)) || []
-      };
-    });
-
-    const latestAlliance = allianceHistory.at(-1) || null;
-    const generatedAtCandidates = [
-      latestAlliance?.collected_at,
-      ...mappedPlayers.map(player => player.snapshots.at(-1)?.collected_at)
-    ].filter(Boolean).sort();
-    const generatedAt = generatedAtCandidates.at(-1) || new Date().toISOString();
-    const latestDate = [
-      latestAlliance?.snapshot_date,
-      ...mappedPlayers.map(player => player.snapshots.at(-1)?.date)
-    ].filter(Boolean).sort().at(-1) || null;
+    const sender = normalizePlayerName(routeMatch?.[2] || senderMatch?.[1]);
+    const receiver = normalizePlayerName(routeMatch?.[4]);
+    const participants = [...new Set([sender, receiver].filter(Boolean))];
 
     return {
-      meta: {
-        title: "OGame Allianzstatistik",
-        server: UNIVERSE,
-        generated_at: generatedAt,
-        latest_date: latestDate,
-        data_source: "supabase"
-      },
-      players: mappedPlayers,
-      members: mappedPlayers.filter(player => player.is_active).map(player => ({ id: player.id, name: player.name })),
-      alliance: {
-        id: ALLIANCE_ID,
-        name: latestAlliance?.alliance_name || localFallback?.alliance?.name || "",
-        tag: latestAlliance?.alliance_tag || localFallback?.alliance?.tag || "",
-        logo: localFallback?.alliance?.logo || "ally/Ally_main.png",
-        latest: latestAlliance,
-        history: allianceHistory
-      },
-      // Expeditionen werden erst in einer späteren Phase migriert.
-      expeditions: localFallback?.expeditions || { events: [], summary: {} }
+      isMoonAttempt: Boolean(titleMatch),
+      title: titleMatch ? `Mondversuch #${titleMatch[1]}` : "Mondversuch",
+      number: titleMatch?.[1] || null,
+      date: dateMatch ? `${dateMatch[1]} ${dateMatch[2]}` : null,
+      sourceCoords: routeMatch?.[1]?.replace(/\./g, ":") || null,
+      targetCoords: routeMatch?.[3]?.replace(/\./g, ":") || null,
+      sender,
+      receiver,
+      participants,
+      info: info || lines.at(-1) || raw,
+      raw
     };
   }
 
-  async function load() {
-    const source = getSource();
-    const data = source === "supabase" ? await loadSupabaseData() : await loadLocalData();
-    data.meta = { ...(data.meta || {}), data_source: source };
-    return data;
+  function setSelectedImage(file, sourceLabel = "Screenshot") {
+    if (!file) return false;
+    if (!file.type?.startsWith("image/")) {
+      status("Aus der Zwischenablage wurde keine Bilddatei erkannt.", true);
+      return false;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      status("Das Bild darf höchstens 5 MB groß sein.", true);
+      return false;
+    }
+    selectedFile = file;
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    objectUrl = URL.createObjectURL(file);
+    $("#imagePreview").src = objectUrl;
+    $("#imagePreview").hidden = false;
+    status(`${sourceLabel} erkannt und zum Upload vorgemerkt.`);
+    return true;
   }
 
-  window.ogameDataSource = Object.freeze({
-    getSource,
-    setSource,
-    load,
-    loadLocalData,
-    loadSupabaseData
+  function clipboardImageFile(event) {
+    const data = event.clipboardData;
+    if (!data) return null;
+
+    // Variante 1: Clipboard-Items (Chrome/Edge, Snipping Tool, Bildbearbeitung)
+    for (const item of [...(data.items || [])]) {
+      if (item.kind !== "file") continue;
+      const blob = item.getAsFile();
+      if (!blob) continue;
+      const type = blob.type || item.type || "image/png";
+      if (!type.startsWith("image/")) continue;
+      const extension = type === "image/webp" ? "webp" : type === "image/jpeg" ? "jpg" : "png";
+      return new File([blob], `screenshot-${Date.now()}.${extension}`, {
+        type,
+        lastModified: Date.now()
+      });
+    }
+
+    // Variante 2: Clipboard-Files (wird von manchen Windows-Quellen verwendet)
+    for (const file of [...(data.files || [])]) {
+      const type = file.type || "image/png";
+      if (!type.startsWith("image/")) continue;
+      const extension = type === "image/webp" ? "webp" : type === "image/jpeg" ? "jpg" : "png";
+      return new File([file], file.name || `screenshot-${Date.now()}.${extension}`, {
+        type,
+        lastModified: file.lastModified || Date.now()
+      });
+    }
+
+    return null;
+  }
+
+  function handleClipboardImage(event) {
+    const file = clipboardImageFile(event);
+    if (!file) {
+      console.debug("[Mondarchiv] Kein Bild im Paste-Event erkannt", {
+        itemTypes: [...(event.clipboardData?.items || [])].map(item => ({ kind: item.kind, type: item.type })),
+        files: [...(event.clipboardData?.files || [])].map(file => ({ name: file.name, type: file.type, size: file.size }))
+      });
+      return;
+    }
+
+    setSelectedImage(file, "Screenshot aus der Zwischenablage");
+    // Vorhandener Text darf parallel weiterhin normal eingefügt werden.
+  }
+
+  function resetForm() {
+    editing = null;
+    selectedFile = null;
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    objectUrl = null;
+    $("#messageForm").reset();
+    $("#imagePreview").hidden = true;
+    $("#editorHeading").textContent = "Mondversuch archivieren";
+    $("#saveMessage").textContent = "Mondversuch speichern";
+    $("#cancelEdit").hidden = true;
+    status("");
+  }
+
+  async function signedImageUrl(path) {
+    if (!path) return null;
+    const { data, error } = await window.ogameSupabase.storage.from(BUCKET).createSignedUrl(path, 3600);
+    if (error) { console.warn("Bild-URL fehlgeschlagen:", error.message); return null; }
+    return data.signedUrl;
+  }
+
+  async function loadProfileNames(authorIds) {
+    const uniqueIds = [...new Set(authorIds.filter(Boolean))];
+    if (!uniqueIds.length) return new Map();
+    const { data, error } = await window.ogameSupabase
+      .from("profiles")
+      .select("id, display_name, ogame_name")
+      .in("id", uniqueIds);
+    if (error) {
+      console.warn("Profilnamen konnten nicht geladen werden:", error.message);
+      return new Map();
+    }
+    return new Map((data || []).map(profile => [profile.id, profile.ogame_name || profile.display_name]));
+  }
+
+  function renderMessageCard(item, profileNames) {
+    const parsed = parseMoonAttempt(item.content);
+    const own = item.author_id === auth.user.id;
+    const admin = auth.profile?.role === "admin";
+    const canChange = own || admin;
+    const archiveAuthor = profileNames.get(item.author_id) || item.author_name || "Unbekannt";
+    const dateLabel = parsed.date || new Date(item.created_at).toLocaleString("de-DE");
+    const route = parsed.sourceCoords && parsed.targetCoords
+      ? `<div class="moon-route"><span>${esc(parsed.sourceCoords)}</span><b aria-hidden="true">→</b><span>${esc(parsed.targetCoords)}</span></div>`
+      : "";
+    const resolvedParticipants = [...new Set(parsed.participants.map(resolvePlayerName).filter(Boolean))];
+    const participantBadges = resolvedParticipants.length
+      ? `<div class="moon-badges">${resolvedParticipants.map(name => `<span class="moon-badge">${esc(name)}</span>`).join("")}</div>`
+      : "";
+
+    return `<article class="panel message-card moon-card" data-id="${esc(item.id)}">
+      <div class="moon-card-top">
+        <div>
+          <div class="moon-kicker">Mondversuch-Archiv</div>
+          <h3>${esc(parsed.title || item.title || "Mondversuch")}</h3>
+        </div>
+        ${canChange ? `<div class="message-actions"><button type="button" data-edit>Bearbeiten</button><button type="button" data-delete>Löschen</button></div>` : ""}
+      </div>
+      <div class="moon-summary">
+        <div class="moon-summary-item"><span>Zeitpunkt</span><strong>${esc(dateLabel)}</strong></div>
+        ${route ? `<div class="moon-summary-item"><span>Route</span>${route}</div>` : ""}
+        ${participantBadges ? `<div class="moon-summary-item"><span>Beteiligte</span>${participantBadges}</div>` : ""}
+      </div>
+      <div class="moon-info"><span>Info</span><p>${esc(parsed.info)}</p></div>
+      ${item.imageUrl ? `<button class="message-screenshot-button" type="button" data-image data-image-url="${esc(item.imageUrl)}" aria-label="Screenshot öffnen" title="Screenshot öffnen"><span aria-hidden="true">▣</span><span>Screenshot</span></button>` : ""}
+      <div class="message-meta">Archiviert von <strong>${esc(archiveAuthor)}</strong> · ${new Date(item.created_at).toLocaleString("de-DE")}${item.updated_at ? " · bearbeitet" : ""}</div>
+    </article>`;
+  }
+
+  async function loadMessages() {
+    const list = $("#messageList");
+    const { data, error } = await window.ogameSupabase
+      .from("alliance_messages")
+      .select("id, created_at, title, content, author_id, author_name, image_path, updated_at")
+      .order("created_at", { ascending: false });
+    if (error) {
+      list.innerHTML = `<p class="negative">Nachrichten konnten nicht geladen werden: ${esc(error.message)}</p>`;
+      return;
+    }
+    if (!data?.length) {
+      list.innerHTML = '<p class="message-empty muted">Noch keine Mondversuche gespeichert.</p>';
+      return;
+    }
+    const profileNames = await loadProfileNames(data.map(item => item.author_id));
+    const withUrls = await Promise.all(data.map(async item => ({ ...item, imageUrl: await signedImageUrl(item.image_path) })));
+    list.innerHTML = withUrls.map(item => renderMessageCard(item, profileNames)).join("");
+    list.querySelectorAll("[data-edit]").forEach(button => button.addEventListener("click", () => beginEdit(withUrls.find(x => x.id === button.closest("[data-id]").dataset.id))));
+    list.querySelectorAll("[data-delete]").forEach(button => button.addEventListener("click", () => deleteMessage(withUrls.find(x => x.id === button.closest("[data-id]").dataset.id))));
+    list.querySelectorAll("[data-image]").forEach(button => button.addEventListener("click", () => openImage(button.dataset.imageUrl)));
+  }
+
+  function beginEdit(item) {
+    editing = item;
+    $("#messageContent").value = item.content || "";
+    $("#editorHeading").textContent = "Mondversuch bearbeiten";
+    $("#saveMessage").textContent = "Änderungen speichern";
+    $("#cancelEdit").hidden = false;
+    if (item.imageUrl) { $("#imagePreview").src = item.imageUrl; $("#imagePreview").hidden = false; }
+    scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function uploadImage(messageId) {
+    if (!selectedFile) return editing?.image_path || null;
+    const ext = (selectedFile.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+    const path = `${auth.user.id}/${messageId}/${Date.now()}.${ext}`;
+    const { error } = await window.ogameSupabase.storage.from(BUCKET).upload(path, selectedFile, { upsert: false, contentType: selectedFile.type });
+    if (error) throw error;
+    if (editing?.image_path) await window.ogameSupabase.storage.from(BUCKET).remove([editing.image_path]);
+    return path;
+  }
+
+  async function saveMessage(event) {
+    event.preventDefault();
+    const content = $("#messageContent").value.trim();
+    if (!content) return status("Bitte die kopierte OGame-Rundmail einfügen.", true);
+    const parsed = parseMoonAttempt(content);
+    if (!parsed.isMoonAttempt) return status("Es konnte keine Angabe wie „Mondversuch #10“ erkannt werden.", true);
+    const button = $("#saveMessage");
+    button.disabled = true;
+    status("Wird gespeichert …");
+    try {
+      const id = editing?.id || crypto.randomUUID();
+      const imagePath = await uploadImage(id);
+      const payload = { title: parsed.title, content, image_path: imagePath, updated_at: editing ? new Date().toISOString() : null };
+      let result;
+      if (editing) {
+        result = await window.ogameSupabase.from("alliance_messages").update(payload).eq("id", id);
+      } else {
+        result = await window.ogameSupabase.from("alliance_messages").insert({
+          id, ...payload, author_id: auth.user.id, author_name: displayName(), created_at: new Date().toISOString()
+        });
+      }
+      if (result.error) throw result.error;
+      resetForm();
+      await loadMessages();
+    } catch (error) {
+      status(`Speichern fehlgeschlagen: ${error.message}`, true);
+    } finally { button.disabled = false; }
+  }
+
+  async function deleteMessage(item) {
+    if (!confirm(`„${item.title || "Mondversuch"}“ wirklich löschen?`)) return;
+    const { error } = await window.ogameSupabase.from("alliance_messages").delete().eq("id", item.id);
+    if (error) return alert(`Löschen fehlgeschlagen: ${error.message}`);
+    if (item.image_path) await window.ogameSupabase.storage.from(BUCKET).remove([item.image_path]);
+    await loadMessages();
+  }
+
+  function openImage(src) { $("#modalImage").src = src; $("#imageModal").hidden = false; }
+  function closeImage() { $("#imageModal").hidden = true; $("#modalImage").src = ""; }
+
+  document.addEventListener("ogame-auth-ready", async event => {
+    auth = event.detail;
+    $("#authUserName").textContent = displayName();
+    await loadPlayers();
+    await loadMessages();
+  }, { once: true });
+  $("#messageForm")?.addEventListener("submit", saveMessage);
+  $("#cancelEdit")?.addEventListener("click", resetForm);
+  $("#messageImage")?.addEventListener("change", event => {
+    const file = event.target.files?.[0] || null;
+    if (!setSelectedImage(file, "Screenshot")) event.target.value = "";
   });
+  $("#messageContent")?.addEventListener("paste", handleClipboardImage);
+  // Zusätzlich global lauschen: Manche Browser liefern Screenshots nicht direkt am Textfeld.
+  document.addEventListener("paste", event => {
+    if (event.target === $("#messageContent")) return;
+    handleClipboardImage(event);
+  });
+  $("#closeImageModal")?.addEventListener("click", closeImage);
+  $("#imageModal")?.addEventListener("click", event => { if (event.target === event.currentTarget) closeImage(); });
 })();

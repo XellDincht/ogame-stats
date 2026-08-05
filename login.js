@@ -1,9 +1,25 @@
-const $=s=>document.querySelector(s);
-const fmt=n=>n==null?"–":new Intl.NumberFormat("de-DE").format(n);
-const date=v=>v?new Date(v).toLocaleDateString("de-DE"):"–";
-let D=null;
-function latest(p){return p.snapshots?.at(-1)||{}}
-function card(p){const m=p.membership||{},l=latest(p);return `<article class="player-card hof-card"><div class="player-meta"><span class="member-status ${p.is_active?'active':'former'}">${p.is_active?'Aktiv':'Ehemalig'}</span><a href="player.html?id=${p.id}">Historie →</a></div><h3>${p.name}</h3><div class="metric-row"><span>Beitritt erfasst</span><strong>${date(m.joined_at||p.first_seen)}</strong></div><div class="metric-row"><span>${p.is_active?'Mitglied seit':'Austritt erfasst'}</span><strong>${p.is_active?`${fmt(p.membership_days)} Tage`:date(m.left_at)}</strong></div><div class="metric-row"><span>Zeit in der Allianz</span><strong>${fmt(p.membership_days)} Tage</strong></div><div class="metric-row"><span>Letzte Gesamtpunkte</span><strong>${fmt(l.total_points)}</strong></div><div class="metric-row"><span>Letzter Rang</span><strong>${fmt(l.total_rank)}</strong></div><div class="metric-row"><span>Letzter Snapshot</span><strong>${l.date||'–'}</strong></div></article>`}
-function render(){const q=$("#hofSearch").value.trim().toLowerCase(),all=D.players.filter(p=>p.name.toLowerCase().includes(q)),active=all.filter(p=>p.is_active),former=all.filter(p=>!p.is_active);$("#activeMembers").innerHTML=active.map(card).join('')||'<p class="muted">Keine aktiven Mitglieder gefunden.</p>';$("#formerMembers").innerHTML=former.map(card).join('')||'<p class="muted">Noch keine ehemaligen Mitglieder erfasst.</p>';$("#hofSummary").innerHTML=`<article class="summary-card"><span class="summary-label">Aktiv</span><strong class="summary-value">${active.length}</strong></article><article class="summary-card"><span class="summary-label">Ehemalig</span><strong class="summary-value">${former.length}</strong></article><article class="summary-card"><span class="summary-label">Gesamt erfasst</span><strong class="summary-value">${all.length}</strong></article>`}
-fetch('data.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{D=j;$("#subtitle").textContent=`${D.alliance?.tag?`[${D.alliance.tag}] · `:''}Aktive und bisherige Mitglieder`;$("#footer").textContent=`Erzeugt ${new Date(D.meta.generated_at).toLocaleString('de-DE')}`;render()}).catch(e=>$("#subtitle").textContent=`Fehler: ${e.message}`);
-$("#hofSearch").addEventListener('input',render);
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#07111f">
+  <title>Hall of Fame · OGame Allianz</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="auth.css">
+</head>
+<body class="auth-protected">
+  <header class="hero"><div class="hero-inner"><div><p class="eyebrow">Allianzarchiv</p><h1>Hall of Fame</h1><p id="subtitle">Aktive und ehemalige Mitglieder</p></div></div></header>
+  <nav class="toolbar"><div class="range-tabs"><a class="nav-link" href="index.html">← Dashboard</a><a class="nav-link" href="player.html">Spieler-Historie</a><a class="nav-link" href="messages.html">Nachrichten</a><a class="nav-link" href="account.html">Accountdaten</a></div><div class="toolbar-actions"><input id="hofSearch" type="search" placeholder="Mitglied suchen …"></div><button type="button" data-auth-logout>Abmelden</button></nav>
+  <main>
+    <section id="hofSummary" class="summary-grid"></section>
+    <section class="panel"><div class="section-head"><div><h2>Aktive Mitglieder</h2><p class="muted">Derzeit in der Allianz</p></div></div><div id="activeMembers" class="hof-grid"></div></section>
+    <section class="panel"><div class="section-head"><div><h2>Ehemalige Mitglieder</h2><p class="muted">Historie und Statistiken bleiben vollständig erhalten</p></div></div><div id="formerMembers" class="hof-grid"></div></section>
+  </main>
+  <footer id="footer">Wird geladen …</footer>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="auth.js"></script>
+  <script src="hall-of-fame.js"></script>
+</body>
+</html>

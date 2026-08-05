@@ -1,5 +1,0 @@
-.account-overview-page{min-height:100vh;background:#02070c}
-.account-overview-toolbar{position:sticky;top:0;z-index:20}
-.account-overview-main{width:100%;padding:0;margin:0}
-.account-overview-main iframe{display:block;width:100%;height:720px;min-height:560px;border:0;background:#02070c}
-@media(max-width:760px){.account-overview-main iframe{min-height:620px}}
