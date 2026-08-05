@@ -1,3 +1,4 @@
+console.info('[OGame] Imperiumsübersicht app.js v8.7.3 geladen');
 const state = { summary: null, snapshots: [], planets: [], production: [], technologies: [], flights: [], selectedAccount: null, selectedSnapshot: null, productionHours: 24, renderToken: 0, objectMode: 'planet', activeTab: 'overview' };
 const $ = s => document.querySelector(s); const nf = new Intl.NumberFormat('de-DE');
 const percentFmt = value => Number(value || 0).toLocaleString('de-DE', {
@@ -67,6 +68,59 @@ function scheduleHeightMeasurements() {
   window.setTimeout(() => notifyParentHeight(true), 80);
   window.setTimeout(() => notifyParentHeight(true), 240);
   window.setTimeout(() => notifyParentHeight(true), 600);
+}
+
+function accountKey(account) {
+  return `${String(account?.universe || '').toLowerCase()}:${String(account?.player_id ?? '')}`;
+}
+
+function account() {
+  const accounts = state.summary?.accounts || [];
+  return accounts.find(item => accountKey(item) === state.selectedAccount) || accounts[0] || null;
+}
+
+function viennaDay(value) {
+  if (!value) return '';
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Vienna',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date(value));
+
+  const year = parts.find(part => part.type === 'year')?.value;
+  const month = parts.find(part => part.type === 'month')?.value;
+  const day = parts.find(part => part.type === 'day')?.value;
+  return year && month && day ? `${year}-${month}-${day}` : '';
+}
+
+function dailySnapshots(selectedAccount) {
+  if (!selectedAccount) return [];
+
+  const matching = (state.snapshots || [])
+    .filter(snapshot =>
+      String(snapshot.player_id) === String(selectedAccount.player_id) &&
+      String(snapshot.universe || '').toLowerCase() === String(selectedAccount.universe || '').toLowerCase()
+    )
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+  const byDay = new Map();
+  for (const snapshot of matching) {
+    const day = viennaDay(snapshot.created_at);
+    if (!day) continue;
+    const entries = byDay.get(day) || [];
+    entries.push(snapshot);
+    byDay.set(day, entries);
+  }
+
+  const today = viennaDay(new Date());
+  return [...byDay.entries()]
+    .sort(([dayA], [dayB]) => dayB.localeCompare(dayA))
+    .map(([day, entries]) => {
+      entries.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      return day === today ? entries.at(-1) : entries[0];
+    })
+    .filter(Boolean);
 }
 function selectedSnapshot(a) { const daily = dailySnapshots(a); return daily.find(s => s.snapshot_id === state.selectedSnapshot) || daily[0] }
 function previousDailySnapshot(a, s) { const daily = dailySnapshots(a); const i = daily.findIndex(x => x.snapshot_id === s.snapshot_id); return i >= 0 ? daily[i + 1] || null : null }
