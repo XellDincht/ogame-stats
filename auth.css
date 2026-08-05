@@ -1,12 +1,38 @@
-html:not(.auth-ready) body.auth-protected { visibility: hidden; }
-html.auth-ready body.auth-protected { visibility: visible; }
-.auth-user-actions { display:flex; align-items:center; gap:.65rem; }
-.auth-user-name { color:var(--muted, #9fb0c6); font-size:.9rem; }
-.auth-logout { cursor:pointer; }
-.login-page { min-height:100vh; display:grid; place-items:center; padding:1.25rem; background:#07111f; }
-.login-shell { width:min(430px, 100%); }
-.login-card { display:grid; gap:1rem; padding:1.5rem; }
-.login-card label { display:grid; gap:.4rem; font-weight:600; }
-.login-card input { width:100%; box-sizing:border-box; }
-.login-card button { min-height:44px; }
-.login-status { min-height:1.25rem; margin:0; }
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
+  <title>OGame Imperiumsübersicht</title>
+
+
+
+<link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="auth.css">
+  <link rel="stylesheet" href="account.css">
+</head>
+<body class="auth-protected account-overview-page">
+  <div id="app">
+    <nav class="toolbar account-overview-toolbar">
+      <div class="range-tabs">
+        <a class="nav-link" href="index.html">Allianzstatistik</a>
+        <a class="nav-link" href="player.html">Spieler-Historie</a>
+        <a class="nav-link" href="hall-of-fame.html">Hall of Fame</a>
+        <a class="nav-link" href="messages.html">Nachrichten</a>
+        <span class="nav-link active">Imperiumsübersicht</span>
+      </div>
+      <button type="button" data-auth-logout>Abmelden</button>
+    </nav>
+
+    <main class="account-overview-main">
+      <iframe id="accountOverviewFrame" title="Private OGame Imperiumsübersicht" src="account-dashboard/index.html?v=8.7.0"></iframe>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="auth.js"></script>
+  <script src="account.js?v=8.7.0"></script>
+</body>
+</html>

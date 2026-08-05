@@ -1,556 +1,91 @@
-
-:root{
-  color-scheme:dark;
-  --bg:#02070c;
-  --panel:#06111a;
-  --panel2:#0a1925;
-  --line:#18384d;
-  --line-bright:#2a6687;
-  --text:#eef7fd;
-  --muted:#8ba8bb;
-  --accent:#65d6ff;
-  --accent-soft:#2a8eb6;
-  --metal:#c4ccd2;
-  --crystal:#61d5ff;
-  --deut:#56d6bd;
-  --good:#8ed7a8;
-  --zero:#53636e;
-  --label-width:190px;
-  --planet-width:118px;
-}
-
-*{box-sizing:border-box}
-html,body{min-height:100%;margin:0}
-body{
-  background:
-    radial-gradient(circle at 48% -10%,rgba(36,112,157,.22),transparent 36%),
-    radial-gradient(circle at 5% 35%,rgba(16,78,111,.14),transparent 28%),
-    linear-gradient(180deg,#020a11,#02060a 65%,#010407);
-  color:var(--text);
-  font:14px/1.35 "Segoe UI",system-ui,sans-serif;
-}
-body::before{
-  content:"";
-  position:fixed;
-  inset:0;
-  pointer-events:none;
-  opacity:.24;
-  background-image:
-    radial-gradient(circle at 10% 20%,#86dfff 0 1px,transparent 1.5px),
-    radial-gradient(circle at 76% 14%,#fff 0 1px,transparent 1.4px),
-    radial-gradient(circle at 62% 68%,#68cfff 0 1px,transparent 1.5px);
-  background-size:260px 220px,310px 270px,390px 320px;
-}
-
-button,select{
-  font:inherit;
-  color:var(--text);
-  background:#081925;
-  border:1px solid #28536e;
-  border-radius:8px;
-}
-button{cursor:pointer}
-
-.account-header{
-  position:relative;
-  z-index:2;
-  min-height:96px;
-  padding:14px clamp(16px,2.2vw,34px);
-  display:grid;
-  grid-template-columns:minmax(250px,1fr) auto auto auto;
-  gap:22px;
-  align-items:center;
-  border-bottom:1px solid var(--line);
-  background:linear-gradient(180deg,rgba(3,12,19,.97),rgba(2,8,13,.94));
-  box-shadow:0 12px 34px #0008;
-}
-.account-heading{display:flex;gap:14px;align-items:center}
-.account-avatar{
-  width:54px;height:54px;border-radius:50%;
-  display:grid;place-items:center;
-  font-size:30px;color:#75d9ff;
-  background:radial-gradient(circle at 35% 30%,#234c68,#07131d 70%);
-  border:1px solid #244b63;
-  box-shadow:0 0 22px #2eaee533;
-}
-.eyebrow{margin:0;color:var(--accent);font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase}
-.account-heading h1{margin:1px 0;font-size:24px}
-.subline{margin:0;color:var(--muted)}
-
-.celestial-master-toggle{
-  width:76px;height:76px;padding:0;border-radius:50%;
-  display:grid;place-items:center;
-  border:2px solid var(--accent);
-  background:radial-gradient(circle,#163247,#030a10 72%);
-  box-shadow:0 0 18px #5fd4ff88,0 0 42px #2799c344;
-  transition:transform .22s ease,box-shadow .22s ease;
-}
-.celestial-master-toggle:hover{transform:scale(1.07);box-shadow:0 0 24px #6ee0ffbb,0 0 54px #2799c366}
-.celestial-master-icon{font-size:46px;filter:drop-shadow(0 5px 9px #000)}
-
-.account-meta{display:grid;gap:8px;min-width:190px}
-.account-meta div{display:flex;gap:8px;justify-content:space-between}
-.account-meta span{color:var(--muted)}
-.account-meta strong{color:#c8f3ff;font-weight:600}
-
-.controls{display:grid;grid-template-columns:1fr 1fr;gap:7px;align-items:end}
-.controls label{display:grid;gap:3px;color:var(--muted);font-size:10px}
-.controls select{min-width:145px;padding:7px 9px}
-.reload-button{grid-column:1/-1;padding:8px 12px}
-
-main{position:relative;z-index:1;padding:16px clamp(10px,1.4vw,24px) 30px}
-
-.message{margin-bottom:12px;padding:10px 12px;border:1px solid #935c5c;background:#39191b;border-radius:8px}
-.hidden{display:none!important}
-
-.celestial-stage{
-  border:1px solid var(--line);
-  border-radius:12px;
-  padding:12px;
-  background:
-    radial-gradient(circle at 45% 35%,rgba(25,104,147,.12),transparent 45%),
-    linear-gradient(180deg,rgba(4,15,23,.94),rgba(2,9,14,.96));
-  box-shadow:0 20px 70px #0009,inset 0 1px #4dcaff0d;
-  overflow:hidden;
-  transition:opacity .18s ease,transform .22s ease,filter .22s ease;
-}
-.celestial-stage.is-switching{opacity:.35;transform:scale(.985);filter:blur(2px)}
-.celestial-stage.switch-arrived{animation:stageArrival .28s ease}
-@keyframes stageArrival{0%{opacity:.4;transform:scale(.985)}100%{opacity:1;transform:scale(1)}}
-
-.stage-heading{
-  display:flex;justify-content:space-between;align-items:end;
-  padding:0 4px 10px;
-  border-bottom:1px solid #143247;
-}
-.stage-heading p{margin:0;color:#9de4ff;font-size:17px;letter-spacing:.045em}
-.stage-heading span{color:var(--muted);font-size:12px}
-.stage-count{text-align:right}
-.stage-count span{display:block}
-.stage-count strong{font-size:18px;color:#b9eeff}
-
-.celestial-cards{
-  display:grid;
-  grid-template-columns:repeat(var(--card-count,8),minmax(150px,1fr));
-  gap:10px;
-  padding-top:12px;
-  overflow-x:auto;
-  scrollbar-color:#24536c #06121a;
-}
-.celestial-card{
-  position:relative;
-  min-width:150px;
-  height:318px;
-  padding:11px 10px 9px;
-  display:flex;
-  flex-direction:column;
-  border:1px solid #234b63;
-  border-radius:11px;
-  background:
-    radial-gradient(circle at 55% 42%,rgba(35,115,157,.17),transparent 46%),
-    linear-gradient(180deg,#06141e,#02090e);
-  box-shadow:inset 0 1px #6edaff0b,0 10px 24px #0007;
-  overflow:hidden;
-  transition:opacity .2s ease,filter .2s ease,border-color .2s ease;
-}
-.celestial-card:hover{border-color:#3b7798}
-.card-title{position:relative;z-index:5;min-height:45px}
-.card-title strong{display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.card-title span{display:block;color:#dcebf3;font-size:12px}
-
-.orb-stack{
-  position:relative;
-  flex:1;
-  min-height:190px;
-  padding:0;
-  border:0;
-  background:transparent;
-  overflow:visible;
-}
-.orb-image,.orb-silhouette{
-  position:absolute;
-  aspect-ratio:1;
-  border-radius:50%;
-  object-fit:cover;
-  transition:
-    width .3s cubic-bezier(.2,.8,.2,1),
-    left .3s cubic-bezier(.2,.8,.2,1),
-    top .3s cubic-bezier(.2,.8,.2,1),
-    opacity .25s ease,
-    filter .25s ease,
-    transform .3s cubic-bezier(.2,.8,.2,1);
-}
-.orb-foreground{
-  width:88%;
-  left:3%;
-  top:24px;
-  z-index:3;
-  filter:drop-shadow(0 15px 18px #000b);
-}
-.orb-background{
-  width:70%; /* ca. 80 % des Vordergrundbilds */
-  right:-3%;
-  top:2px;
-  z-index:2;
-  opacity:.9;
-  filter:brightness(.72) drop-shadow(0 8px 12px #000b);
-}
-.orb-silhouette{
-  display:block;
-  background:
-    radial-gradient(circle at 36% 30%,#111 0,#050505 45%,#000 72%);
-  box-shadow:inset -12px -14px 18px #000,0 8px 18px #000c;
-  opacity:.96;
-}
-
-.card-stats{
-  position:relative;z-index:5;
-  min-height:49px;
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:5px;
-  padding-top:4px;
-}
-.card-stat{text-align:center;min-width:0}
-.card-stat span{
-  width:22px;height:22px;margin:0 auto 2px;
-  display:grid;place-items:center;
-  border-radius:7px;
-  font-size:11px;font-weight:900;
-  background:#132737;border:1px solid #2d536b;
-}
-.card-stat strong{display:block;font-size:11px;white-space:nowrap}
-.metal-stat span{color:var(--metal)}
-.crystal-stat span{color:var(--crystal)}
-.deut-stat span{color:var(--deut)}
-.sum-stat span{color:#fff}
-.facility-stat span{color:#d9a6ff}
-.ship-stat span{color:#63dcff}
-.defense-stat span{color:#5fbaff}
-
-.missing-moon-card{
-  opacity:.34;
-  filter:saturate(.15) brightness(.6);
-  border-color:#132735;
-}
-.missing-moon-card .orb-background{opacity:.34}
-.missing-moon-card .orb-foreground{background:#000;opacity:1}
-.empty-card-stats{grid-column:1/-1}
-
-.dashboard-tabs{
-  margin-top:14px;
-  display:flex;
-  border:1px solid #25475d;
-  border-radius:10px;
-  overflow-x:auto;
-  background:linear-gradient(180deg,#0c1d29,#07121a);
-  box-shadow:0 10px 30px #0007;
-}
-.dashboard-tabs button{
-  position:relative;
-  flex:1;
-  min-width:130px;
-  height:72px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:10px;
-  border:0;
-  border-radius:0;
-  color:#8197a8;
-  background:transparent;
-  font-size:15px;
-}
-.dashboard-tabs button+button{border-left:1px solid #17384d}
-.dashboard-tabs button::after{
-  content:"";
-  position:absolute;left:12%;right:12%;bottom:0;height:2px;
-  background:transparent;
-  box-shadow:none;
-}
-.dashboard-tabs button:hover{color:#cdefff;background:#102534}
-.dashboard-tabs button.active{
-  color:#effbff;
-  background:linear-gradient(180deg,#173248,#0e2536);
-  text-shadow:0 0 12px #6bd9ff99;
-}
-.dashboard-tabs button.active::after{
-  background:var(--accent);
-  box-shadow:0 0 12px var(--accent);
-}
-.tab-icon{font-size:27px;color:inherit}
-.dashboard-tabs button[hidden]{display:none}
-
-.period-strip{
-  margin:10px 0;
-  display:flex;align-items:center;justify-content:flex-end;gap:10px;
-  color:var(--muted);
-}
-.period-tabs{display:flex}
-.period-tabs button{padding:6px 13px;border-radius:0}
-.period-tabs button:first-child{border-radius:7px 0 0 7px}
-.period-tabs button:last-child{border-radius:0 7px 7px 0}
-.period-tabs button+button{margin-left:-1px}
-.period-tabs button.active{background:var(--accent);color:#021018;border-color:var(--accent);font-weight:800}
-
-.empire-shell{
-  margin-top:10px;
-  border:1px solid var(--line);
-  border-radius:10px;
-  overflow:hidden;
-  background:rgba(4,14,21,.96);
-  box-shadow:0 16px 46px #0008;
-}
-.detail-title{
-  padding:10px 14px;
-  display:flex;gap:8px;align-items:baseline;
-  background:linear-gradient(180deg,#102536,#091823);
-  border-bottom:1px solid var(--line);
-}
-.detail-title span{font-size:17px;font-weight:700;color:#dff7ff}
-.detail-title small{color:var(--accent)}
-.empire-scroll{overflow:auto}
-table{border-collapse:separate;border-spacing:0;min-width:100%;width:max-content}
-th,td{
-  min-width:var(--planet-width);width:var(--planet-width);
-  padding:7px 6px;
-  text-align:center;
-  border-right:1px solid #173447;
-  border-bottom:1px solid #173447;
-  background:#081621;
-}
-thead th{position:sticky;top:0;z-index:2;background:#102536}
-.label-col{
-  min-width:var(--label-width)!important;width:var(--label-width)!important;
-  text-align:left!important;background:#0c2130!important;
-}
-.compact-object-head span{display:block;font-weight:700}
-.compact-object-head small{display:block;color:var(--muted)}
-.missing-object-head,.missing-moon-cell{
-  background:#03080c!important;color:transparent!important;opacity:.45;
-}
-.summary-col{min-width:88px!important;width:88px!important;background:#102536!important;font-weight:700}
-.travelling-col{min-width:92px!important;width:92px!important;background:#12293a!important}
-.subsection-row td{
-  text-align:left;
-  padding:7px 12px;
-  color:#a6ddf1;
-  background:#0e2738;
-  text-transform:uppercase;
-  letter-spacing:.08em;
-  font-size:11px;
-}
-.zero{color:var(--zero)}
-td.high{color:var(--good)}
-.tech-label{display:block;white-space:normal;overflow-wrap:anywhere}
-.value-with-delta{display:inline-flex;gap:4px;align-items:baseline;white-space:nowrap}
-.delta{font-size:10px;font-weight:400}
-.delta-positive{color:#8fc7a5}.delta-negative{color:#d79a9a}.delta-zero{color:#6f8290}
-.production-row.metal td:not(.label-col){color:var(--metal)}
-.production-row.crystal td:not(.label-col){color:var(--crystal)}
-.production-row.deut td:not(.label-col){color:var(--deut)}
-.production-row.energy td:not(.label-col){color:#f1c76a}
-.production-sum-row td{color:#a8eaff!important;background:#123047!important;font-weight:800}
-.empty-detail{padding:28px!important;color:var(--muted)}
-.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-footer{text-align:center;color:#668093;padding:18px}
-
-@media(max-width:1180px){
-  .account-header{grid-template-columns:1fr auto auto}
-  .controls{grid-column:1/-1;grid-template-columns:1fr 1fr auto}
-  .reload-button{grid-column:auto}
-  .celestial-cards{grid-template-columns:repeat(var(--card-count,8),170px)}
-}
-@media(max-width:700px){
-  .account-header{grid-template-columns:1fr auto;padding:12px}
-  .account-meta{grid-column:1/-1}
-  .controls{grid-template-columns:1fr 1fr}
-  .reload-button{grid-column:1/-1}
-  .celestial-master-toggle{width:62px;height:62px}
-  .celestial-master-icon{font-size:37px}
-  main{padding:10px 6px 25px}
-  .celestial-card{height:292px}
-  .dashboard-tabs button{min-width:105px;height:62px;font-size:12px;gap:6px}
-  .tab-icon{font-size:21px}
-  :root{--label-width:145px;--planet-width:96px}
-}
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OGame Imperiumsübersicht</title>
 
 
-/* v8.3 kompakter Kopf und besser lesbare Karten */
-.compact-account-header{
-  min-height:58px;
-  padding:7px clamp(10px,1.4vw,20px);
-  grid-template-columns:minmax(390px,1fr) auto;
-  gap:18px;
-}
-.compact-controls{grid-template-columns:minmax(170px,1fr) minmax(190px,1fr) auto;grid-column:auto}
-.compact-controls .reload-button{grid-column:auto;align-self:end}
-.compact-meta{display:flex;gap:22px;min-width:0}
-.compact-meta div{display:grid;gap:1px;justify-items:end}
-.compact-meta span{font-size:9px;text-transform:uppercase;letter-spacing:.09em}
-.compact-meta strong{font-size:12px}
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="account-header compact-account-header">
+    <div class="controls compact-controls">
+      <label>Account <select id="accountSelect"></select></label>
+      <label>Tagesstand <select id="snapshotSelect"></select></label>
+      <button id="reloadButton" class="reload-button" type="button">↻ Neu laden</button>
+    </div>
+    <div class="account-meta compact-meta">
+      <div><span>Universum</span><strong id="universe">–</strong></div>
+      <div><span>Stand</span><strong id="latestSnapshot">–</strong></div>
+    </div>
+    <span id="playerName" class="sr-only"></span>
+  </header>
 
-.celestial-switch-card{
-  min-width:132px;height:318px;padding:18px 10px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
-  border:1px solid #2d6686;border-radius:11px;
-  background:radial-gradient(circle at 50% 38%,rgba(58,173,226,.22),transparent 38%),linear-gradient(180deg,#0b2232,#040c12);
-  box-shadow:inset 0 1px #7ee5ff18,0 10px 24px #0007;
-}
-.celestial-switch-card:hover{border-color:#65d6ff;background:radial-gradient(circle at 50% 38%,rgba(83,200,247,.3),transparent 42%),linear-gradient(180deg,#103149,#06121b)}
-.switch-orb{font-size:74px;line-height:1;filter:drop-shadow(0 0 18px #70dfff88)}
-.celestial-switch-card strong{font-size:17px;color:#e8f9ff}
-.celestial-switch-card small{color:#8eb7ca}
+  <main>
+    <section id="message" class="message hidden"></section>
 
-.card-stat strong{font-size:15px;font-weight:800;line-height:1.15;letter-spacing:.01em;text-shadow:0 1px 3px #000}
-.card-stat span{width:25px;height:25px;font-size:12px}
-.card-stats{min-height:55px;gap:4px}
+    <section class="celestial-stage" aria-live="polite">
+      <div class="stage-heading">
+        <div>
+          <p id="stageTitle">PLANETEN IM VORDERGRUND</p>
+          <div class="stage-subline">
+            <span id="stageHint">Klicke auf den Mond, um die Monde anzuzeigen</span>
+            <div id="lfGlobalBonus"></div>
+          </div>
+        </div>
+        <div class="stage-count"><span>Planeten / Monde</span><strong id="planetCount">–</strong></div>
+      </div>
+      <div id="celestialCards" class="celestial-cards"></div>
+    </section>
 
-.lf-race-row td{padding:0!important;background:#0b2130!important}
-.lf-race-toggle{width:100%;padding:9px 12px;border:0;border-radius:0;text-align:left;background:linear-gradient(180deg,#17384d,#0e2737);color:#c9efff;font-weight:800}
-.lf-race-toggle span{display:inline-block;width:18px;color:#68d5ff}
-.lf-hidden-row{display:none!important}
-.bonus-col{min-width:150px!important;width:150px!important;color:#b8eaff;font-size:11px;white-space:normal!important}
+    <nav id="dashboardTabs" class="dashboard-tabs" aria-label="Accountbereiche">
+      <button type="button" data-tab="overview" class="active"><span class="tab-icon">⌾</span><span>Übersicht</span></button>
+      <button type="button" data-tab="production"><span class="tab-icon">▰</span><span>Produktion</span></button>
+      <button type="button" data-tab="buildings"><span class="tab-icon">▣</span><span>Versorgung</span></button>
+      <button type="button" data-tab="research"><span class="tab-icon">⚗</span><span>Forschung</span></button>
+      <button type="button" data-tab="lifeform"><span class="tab-icon">◈</span><span>Lebensform</span></button>
+      <button type="button" data-tab="facilities"><span class="tab-icon">▥</span><span>Anlagen</span></button>
+      <button type="button" data-tab="ships"><span class="tab-icon">◉</span><span>Flotte</span></button>
+      <button type="button" data-tab="defenses"><span class="tab-icon">⬡</span><span>Verteidigung</span></button>
+    </nav>
 
-@media(max-width:700px){
-  .compact-account-header{grid-template-columns:1fr}
-  .compact-meta{justify-content:space-between}
-  .compact-controls{grid-template-columns:1fr 1fr}
-  .compact-controls .reload-button{grid-column:1/-1}
-  .celestial-switch-card{height:292px}
-}
+    <section class="period-strip" id="productionPeriodStrip">
+      <span>Produktionszeitraum</span>
+      <div class="period-tabs">
+        <button type="button" data-period="1">1h</button>
+        <button type="button" data-period="24" class="active">24h</button>
+        <button type="button" data-period="168">1w</button>
+      </div>
+    </section>
 
+    <section class="empire-shell">
+      <div class="detail-title">
+        <span id="detailTabTitle">Übersicht</span>
+        <small id="detailModeLabel">Planeten</small>
+      </div>
+      <div class="empire-scroll">
+        <table id="empireTable">
+          <thead id="empireHead"></thead>
+          <tbody id="empireBody"></tbody>
+        </table>
+      </div>
+    </section>
 
-/* v8.4: klare Ressourcen-Icons und selektive Bonusspalte */
-.card-stat span{
-  width:34px;
-  height:34px;
-  padding:3px;
-  border-radius:9px;
-}
-.card-stat strong{
-  margin-top:3px;
-  font-size:18px;
-  line-height:1.05;
-  font-weight:900;
-  letter-spacing:.015em;
-  text-shadow:0 2px 5px #000;
-}
-.card-stats{min-height:68px;gap:6px;align-items:end}
-.resource-svg{display:block;width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 4px currentColor)}
-.metal-svg{color:#c7d0d7}.crystal-svg{color:#69ddff}.deut-svg{color:#58e3c5}.sum-svg{color:#f1fbff}
+    <!-- Bestehende Kennzahlen bleiben für die Datenlogik vorhanden. -->
+    <section class="sr-only" aria-hidden="true">
+      <span id="metalPeriodLabel"></span><strong id="totalMetal"></strong>
+      <span id="crystalPeriodLabel"></span><strong id="totalCrystal"></strong>
+      <span id="deutPeriodLabel"></span><strong id="totalDeuterium"></strong>
+      <span id="sumPeriodLabel"></span><strong id="totalProduction"></strong>
+      <strong id="stationedShips"></strong><strong id="travellingShips"></strong>
+      <small id="travellingHint"></small><strong id="allShips"></strong>
+    </section>
+  </main>
 
-/* Die Bonusspalte ist ausschließlich im Reiter Forschung sichtbar. */
-#empireTable .bonus-col{display:none}
-#empireTable.show-bonus .bonus-col{display:table-cell}
-#empireTable.show-bonus .bonus-col{min-width:180px!important;width:180px!important}
+  <footer>Private Imperiumsübersicht · Planeten und Monde</footer>
 
-@media(max-width:700px){
-  .card-stat span{width:30px;height:30px}
-  .card-stat strong{font-size:16px}
-}
-
-
-/* v8.5: kompaktere Karten, echte Mondfelder und stabilere Höhe */
-html,body{height:auto!important;min-height:0!important}
-body{overflow-x:hidden}
-.card-stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;min-height:58px}
-.card-stat span{width:38px;height:38px;border-radius:10px}
-.resource-svg{width:29px;height:29px}
-.card-stat strong{font-size:15px;line-height:1.15}
-.moon-card-stats{grid-template-columns:1fr;align-items:center}
-.moon-field-stat{display:flex;align-items:center;justify-content:center;gap:9px;padding:7px 9px;border:1px solid #294b60;border-radius:9px;background:#0a1c28}
-.moon-field-stat span{color:var(--muted);font-size:12px}
-.moon-field-stat strong{font-size:18px;color:#dff7ff}
-.lf-hidden-row{display:none!important}
-.controls select{font-size:15px;line-height:1.25;min-width:0;width:auto;max-width:220px;padding:9px 11px}
-.controls label:first-child select{width:150px}
-.controls label:nth-child(2) select{width:190px}
-.account-overview-main iframe{height:auto}
-
-
-/* v8.6: LF-Boni und robuste Höhe */
-.stage-heading > div:first-child{
-  min-width:0;
-  flex:1;
-}
-#stageHint{
-  display:flex;
-  flex-wrap:wrap;
-  align-items:center;
-  gap:10px;
-}
-.lf-global-bonus{
-  display:inline-flex;
-  flex-wrap:wrap;
-  gap:6px;
-  align-items:center;
-  padding:5px 8px;
-  border:1px solid #285a73;
-  border-radius:8px;
-  background:#071923;
-  box-shadow:inset 0 1px #5fd6ff0c;
-}
-.lf-global-bonus span{
-  color:#72cfee;
-  font-weight:800;
-}
-.lf-global-bonus strong{
-  padding:2px 5px;
-  border-radius:5px;
-  color:#e7f8ff;
-  background:#102a3a;
-  font-size:11px;
-  white-space:nowrap;
-}
-
-.lf-building-card-bonus{
-  position:relative;
-  z-index:6;
-  min-height:44px;
-  margin-top:5px;
-  padding:5px 7px;
-  border-top:1px solid #1a4055;
-  display:grid;
-  gap:2px;
-}
-.lf-building-card-bonus span{
-  color:#70cde9;
-  font-size:9px;
-  text-transform:uppercase;
-  letter-spacing:.08em;
-}
-.lf-building-card-bonus strong{
-  color:#ddf6ff;
-  font-size:10px;
-  line-height:1.25;
-  white-space:normal;
-}
-
-.cell-local-bonus{
-  display:block;
-  margin-top:2px;
-  color:#66d6f1;
-  font-size:9px;
-  line-height:1.15;
-}
-
-.celestial-card{
-  height:350px;
-}
-
-html,body{
-  overflow-x:hidden;
-}
-body{
-  min-height:0;
-}
-
-@media(max-width:700px){
-  .lf-global-bonus{
-    width:100%;
-  }
-  .celestial-card{
-    height:340px;
-  }
-}
+  <script src="data-source.js"></script>
+  <script src="app.js?v=8.7.0"></script>
+</body>
+</html>

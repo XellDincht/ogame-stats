@@ -37,3 +37,41 @@
 .data-source-status.is-error{color:#ff7d8b;border-color:rgba(255,125,139,.38)}
 .data-source-status.is-error::before{background:#ff7d8b}
 @media(max-width:900px){.data-source-control span{display:none}.data-source-status{display:none}}
+
+
+/* Spieler-Historie: Hover-Differenz zum Vortag */
+.history-value-cell{
+  position:relative;
+  cursor:help;
+}
+.history-value-cell[data-delta]:not([data-delta=""])::after{
+  content:attr(data-delta);
+  position:absolute;
+  left:50%;
+  bottom:calc(100% + 7px);
+  z-index:20;
+  min-width:max-content;
+  padding:6px 9px;
+  border-radius:7px;
+  background:#07131f;
+  border:1px solid #31536d;
+  box-shadow:0 8px 24px #000b;
+  color:#dcebf5;
+  font-size:.78rem;
+  font-weight:800;
+  opacity:0;
+  visibility:hidden;
+  transform:translate(-50%,4px);
+  transition:opacity .14s ease,transform .14s ease,visibility .14s ease;
+  pointer-events:none;
+}
+.history-value-cell[data-delta]:not([data-delta=""]):hover::after{
+  opacity:1;
+  visibility:visible;
+  transform:translate(-50%,0);
+}
+.history-delta-positive{box-shadow:inset 0 -2px #4fc77b}
+.history-delta-negative{box-shadow:inset 0 -2px #e06464}
+.history-delta-neutral{box-shadow:inset 0 -2px #647685}
+.history-delta-positive::after{color:#76e39a!important;border-color:#347a4c!important}
+.history-delta-negative::after{color:#ff8f8f!important;border-color:#8b4141!important}

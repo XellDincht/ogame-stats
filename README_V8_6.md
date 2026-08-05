@@ -1,19 +1,23 @@
-# Imperiumsübersicht v8.6
+# OGame Imperiumsübersicht v8.4.0
 
-Änderungen:
-- Iframe-Höhe misst jetzt die tatsächliche Dokumenthöhe und nutzt mindestens die freie Fensterhöhe.
-- Neuer Reiter „Lebensform“ mit Lebensformgebäuden.
-- Nur die aktuell aktive Lebensform ist standardmäßig ausgeklappt.
-- Bekannte lokale LF-Gebäudeboni werden pro Planet direkt in der Tabelle angezeigt.
-- Lokale LF-Gebäude-Produktionsboni stehen zusätzlich kompakt in jeder Planetenkarte.
-- In der Zeile „PLANETEN IM VORDERGRUND“ erscheint die imperiumsweite Summe der
-  LF-Forschungsboni für Metall, Kristall, Deuterium und Energie.
-- Akustische Sondierung wird mit 0,04 % pro Stufe berechnet, damit Stufe 2 exakt 0,08 % ergibt.
-- Prozentwerte werden mit bis zu drei Nachkommastellen dargestellt und nicht auf eine
-  Nachkommastelle hochgerundet.
+## Änderungen
 
-Hinweis:
-- Die Gesamtbonuszeile verwendet ausschließlich Lebensform-Forschungen.
-- Die Kartenzeile „LF-Gebäude“ verwendet ausschließlich lokale Lebensformgebäude des Planeten.
-- Nicht verlässlich hinterlegte LF-Gebäudeeffekte werden nicht erfunden; sie erscheinen
-  weiterhin in der Lebensform-Gebäudetabelle mit ihrer Stufe.
+- `account.html` ist jetzt eine eigene, aufgeräumte Seite für die Imperiumsübersicht.
+- Der alte Bereich „Accountdaten“ wurde entfernt.
+- Die Umschaltung „Dashboard“ wurde entfernt; die neue Ansicht ist direkt geöffnet.
+- Die Datenquellen-Auswahl wurde vollständig entfernt.
+- Die private Accountansicht verwendet fest Supabase.
+- In der Hauptnavigation heißt der Link nun „Imperiumsübersicht“.
+- In den Planetenkarten werden große SVG-Icons für Metall, Kristall und Deuterium verwendet.
+- Die Produktionswerte in den Karten sind größer und schneller lesbar.
+- Die Lebensform wird primär anhand der tatsächlich gebauten Lebensformgebäude erkannt. Dadurch wird Rock’tal nicht mehr fälschlich als Menschen angezeigt.
+- Die Bonusspalte ist nur noch im Reiter „Forschung“ sichtbar.
+- Normale Forschungen zeigen bekannte aktuelle Boni, z. B. Laderaum, Panzerung, Waffen, Schilde, Triebwerke und Plasmaförderung.
+- Lebensformforschungen bleiben je Volk einklappbar; die aktuelle Lebensform wird geöffnet.
+- „Schiffswerft“ heißt „Flotte“.
+
+## Installation
+
+Den Inhalt dieses Projektordners über den aktuellen Repository-Inhalt kopieren und veröffentlichen.
+
+Wichtig: `account-data.json` und `account-data-source.js` wurden absichtlich entfernt, da sie nur zur alten Accountdaten-Ansicht gehörten.

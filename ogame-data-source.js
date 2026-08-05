@@ -1,189 +1,35 @@
-(() => {
-  const STORAGE_KEY = "ogame.dashboard.dataSource";
-  const VALID_SOURCES = new Set(["local", "supabase"]);
-  const UNIVERSE = "s282-de";
-  const ALLIANCE_ID = 500219;
-
-  function getSource() {
-    const value = localStorage.getItem(STORAGE_KEY);
-    return VALID_SOURCES.has(value) ? value : "local";
-  }
-
-  function setSource(value) {
-    if (!VALID_SOURCES.has(value)) throw new Error(`Unbekannte Datenquelle: ${value}`);
-    localStorage.setItem(STORAGE_KEY, value);
-  }
-
-  async function loadLocalData() {
-    const response = await fetch("data.json", { cache: "no-store" });
-    if (!response.ok) throw new Error(`data.json konnte nicht geladen werden (${response.status}).`);
-    return response.json();
-  }
-
-  async function selectAll(query, label) {
-    const { data, error } = await query;
-    if (error) {
-      const details = [error.message, error.details, error.hint].filter(Boolean).join(" · ");
-      throw new Error(`${label}: ${details || "Unbekannter Supabase-Fehler"}`);
-    }
-    return data || [];
-  }
-
-  function membershipDays(joinedAt, leftAt) {
-    if (!joinedAt) return 0;
-    const start = new Date(joinedAt);
-    const end = leftAt ? new Date(leftAt) : new Date();
-    return Math.max(0, Math.floor((end - start) / 86400000) + 1);
-  }
-
-  async function loadSupabaseData() {
-    const client = window.ogameSupabase;
-    if (!client) throw new Error("Supabase-Client ist noch nicht initialisiert.");
-
-    const { data: sessionData, error: sessionError } = await client.auth.getSession();
-    if (sessionError) throw new Error(`Supabase-Session: ${sessionError.message}`);
-    if (!sessionData.session) throw new Error("Keine gültige Supabase-Anmeldung vorhanden.");
-
-    const [players, snapshots, allianceHistory, memberships, localFallback] = await Promise.all([
-      selectAll(
-        client.from("ogame_public_players")
-          .select("universe, player_id, player_name, status, alliance_id, first_seen_at, last_seen_at, is_active")
-          .eq("universe", UNIVERSE)
-          .order("player_id", { ascending: true }),
-        "Spieler"
-      ),
-      selectAll(
-        client.from("ogame_player_snapshots")
-          .select("*")
-          .eq("universe", UNIVERSE)
-          .order("snapshot_date", { ascending: true })
-          .order("player_id", { ascending: true }),
-        "Spieler-Snapshots"
-      ),
-      selectAll(
-        client.from("ogame_alliance_snapshots")
-          .select("*")
-          .eq("universe", UNIVERSE)
-          .eq("alliance_id", ALLIANCE_ID)
-          .order("snapshot_date", { ascending: true }),
-        "Allianz-Snapshots"
-      ),
-      selectAll(
-        client.from("ogame_alliance_memberships")
-          .select("id, universe, alliance_id, player_id, joined_at, left_at, last_seen_at, is_active")
-          .eq("universe", UNIVERSE)
-          .eq("alliance_id", ALLIANCE_ID)
-          .order("joined_at", { ascending: true }),
-        "Mitgliedschaften"
-      ),
-      loadLocalData().catch(() => null)
-    ]);
-
-    const snapshotsByPlayer = new Map();
-    for (const row of snapshots) {
-      const list = snapshotsByPlayer.get(String(row.player_id)) || [];
-      list.push({
-        date: row.snapshot_date,
-        collected_at: row.collected_at,
-        api_timestamp: row.api_timestamp,
-        total_points: row.total_points,
-        total_rank: row.total_rank,
-        economy_points: row.economy_points,
-        economy_rank: row.economy_rank,
-        research_points: row.research_points,
-        research_rank: row.research_rank,
-        military_points: row.military_points,
-        military_rank: row.military_rank,
-        military_lost_points: row.military_lost_points,
-        military_lost_rank: row.military_lost_rank,
-        military_built_points: row.military_built_points,
-        military_built_rank: row.military_built_rank,
-        military_destroyed_points: row.military_destroyed_points,
-        military_destroyed_rank: row.military_destroyed_rank,
-        honor_points: row.honor_points,
-        honor_rank: row.honor_rank,
-        ships: row.ships
-      });
-      snapshotsByPlayer.set(String(row.player_id), list);
-    }
-
-    const membershipsByPlayer = new Map();
-    for (const row of memberships) {
-      const list = membershipsByPlayer.get(String(row.player_id)) || [];
-      list.push({
-        id: row.id,
-        joined_at: row.joined_at,
-        left_at: row.left_at,
-        last_seen_at: row.last_seen_at,
-        is_active: row.is_active,
-        days: membershipDays(row.joined_at, row.left_at)
-      });
-      membershipsByPlayer.set(String(row.player_id), list);
-    }
-
-    const mappedPlayers = players.map(row => {
-      const playerMemberships = membershipsByPlayer.get(String(row.player_id)) || [];
-      const activeMembership = [...playerMemberships].reverse().find(item => item.is_active) || playerMemberships.at(-1) || null;
-      return {
-        id: row.player_id,
-        name: row.player_name,
-        status: row.status || "",
-        first_seen: row.first_seen_at,
-        last_seen: row.last_seen_at,
-        is_active: row.is_active,
-        membership: activeMembership,
-        memberships: playerMemberships,
-        membership_days: playerMemberships.reduce((sum, item) => sum + item.days, 0),
-        snapshots: snapshotsByPlayer.get(String(row.player_id)) || []
-      };
-    });
-
-    const latestAlliance = allianceHistory.at(-1) || null;
-    const generatedAtCandidates = [
-      latestAlliance?.collected_at,
-      ...mappedPlayers.map(player => player.snapshots.at(-1)?.collected_at)
-    ].filter(Boolean).sort();
-    const generatedAt = generatedAtCandidates.at(-1) || new Date().toISOString();
-    const latestDate = [
-      latestAlliance?.snapshot_date,
-      ...mappedPlayers.map(player => player.snapshots.at(-1)?.date)
-    ].filter(Boolean).sort().at(-1) || null;
-
-    return {
-      meta: {
-        title: "OGame Allianzstatistik",
-        server: UNIVERSE,
-        generated_at: generatedAt,
-        latest_date: latestDate,
-        data_source: "supabase"
-      },
-      players: mappedPlayers,
-      members: mappedPlayers.filter(player => player.is_active).map(player => ({ id: player.id, name: player.name })),
-      alliance: {
-        id: ALLIANCE_ID,
-        name: latestAlliance?.alliance_name || localFallback?.alliance?.name || "",
-        tag: latestAlliance?.alliance_tag || localFallback?.alliance?.tag || "",
-        logo: localFallback?.alliance?.logo || "ally/Ally_main.png",
-        latest: latestAlliance,
-        history: allianceHistory
-      },
-      // Expeditionen werden erst in einer späteren Phase migriert.
-      expeditions: localFallback?.expeditions || { events: [], summary: {} }
-    };
-  }
-
-  async function load() {
-    const source = getSource();
-    const data = source === "supabase" ? await loadSupabaseData() : await loadLocalData();
-    data.meta = { ...(data.meta || {}), data_source: source };
-    return data;
-  }
-
-  window.ogameDataSource = Object.freeze({
-    getSource,
-    setSource,
-    load,
-    loadLocalData,
-    loadSupabaseData
-  });
-})();
+.message-editor { display:grid; gap:1rem; }
+.message-editor input,.message-editor textarea { width:100%; box-sizing:border-box; }
+.message-editor textarea { min-height:230px; resize:vertical; line-height:1.55; }
+.message-editor-actions { display:flex; flex-wrap:wrap; gap:.75rem; align-items:center; }
+.message-paste-hint { color:var(--muted,#9fb0c6); font-size:.84rem; }
+.message-image-preview { max-width:300px; max-height:200px; border-radius:12px; object-fit:contain; border:1px solid rgba(255,255,255,.1); }
+.message-list { display:grid; gap:1.1rem; }
+.message-card { padding:1.2rem; }
+.moon-card { overflow:hidden; position:relative; background:linear-gradient(145deg,rgba(15,34,55,.96),rgba(8,20,35,.96)); border:1px solid rgba(96,175,255,.18); }
+.moon-card::before { content:""; position:absolute; inset:0 auto 0 0; width:4px; background:linear-gradient(#6fb9ff,#8c7cff); }
+.moon-card-top { display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; }
+.moon-card h3 { margin:.2rem 0 0; font-size:1.35rem; }
+.moon-kicker { color:#7fc2ff; text-transform:uppercase; letter-spacing:.11em; font-size:.72rem; font-weight:700; }
+.moon-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.75rem; margin:1rem 0; }
+.moon-summary-item { min-width:0; padding:.75rem .85rem; border:1px solid rgba(255,255,255,.08); border-radius:12px; background:rgba(255,255,255,.035); }
+.moon-summary-item>span,.moon-info>span { display:block; color:var(--muted,#9fb0c6); font-size:.75rem; text-transform:uppercase; letter-spacing:.08em; margin-bottom:.42rem; }
+.moon-summary-item strong { overflow-wrap:anywhere; }
+.moon-route { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; font-weight:700; }
+.moon-route b { color:#7fc2ff; }
+.moon-badges { display:flex; flex-wrap:wrap; gap:.4rem; }
+.moon-badge { display:inline-flex; align-items:center; min-height:26px; padding:.18rem .6rem; border-radius:999px; background:rgba(92,166,255,.16); border:1px solid rgba(111,185,255,.25); font-size:.86rem; font-weight:700; }
+.moon-info { padding:.9rem 1rem; border-radius:12px; background:rgba(0,0,0,.16); }
+.moon-info p { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.55; }
+.message-meta { margin-top:.9rem; color:var(--muted,#9fb0c6); font-size:.82rem; }
+.message-screenshot-button { margin-top:1rem; display:inline-flex; align-items:center; gap:.5rem; min-height:38px; padding:.45rem .8rem; border-radius:10px; border:1px solid rgba(111,185,255,.28); background:rgba(92,166,255,.12); color:inherit; cursor:pointer; font-weight:700; }
+.message-screenshot-button:hover { background:rgba(92,166,255,.2); }
+.message-screenshot-button span:first-child { font-size:1.1rem; color:#7fc2ff; }
+.message-actions { display:flex; gap:.5rem; flex-wrap:wrap; }
+.message-empty { text-align:center; padding:2rem; }
+.image-modal { position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:1000; display:grid; place-items:center; padding:1rem; }
+.image-modal[hidden] { display:none; }
+.image-modal img { max-width:96vw; max-height:92vh; object-fit:contain; }
+.image-modal button { position:absolute; top:1rem; right:1rem; }
+@media (max-width:850px){.moon-summary{grid-template-columns:1fr 1fr}.moon-summary-item:last-child{grid-column:1/-1}}
+@media (max-width:650px){.moon-card-top{display:block}.message-actions{margin-top:.75rem}.moon-summary{grid-template-columns:1fr}.moon-summary-item:last-child{grid-column:auto}}
