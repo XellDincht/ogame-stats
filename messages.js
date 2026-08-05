@@ -1,28 +1,9 @@
-<!doctype html>
-<html lang="de">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#07111f">
-  <title>Anmelden · OGame Allianz</title>
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="auth.css">
-</head>
-<body class="login-page">
-  <main class="login-shell">
-    <form id="loginForm" class="panel login-card">
-      <p class="eyebrow">Geschützter Allianzbereich</p>
-      <h1>OGame Dashboard</h1>
-      <p class="muted">Melde dich mit dem von einem Administrator angelegten Benutzerkonto an.</p>
-      <label>E-Mail<input id="email" type="email" autocomplete="username" required></label>
-      <label>Passwort<input id="password" type="password" autocomplete="current-password" required></label>
-      <button id="loginButton" type="submit">Anmelden</button>
-      <p id="loginStatus" class="login-status negative" role="alert"></p>
-    </form>
-  </main>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js"></script>
-  <script src="auth.js"></script>
-  <script src="login.js"></script>
-</body>
-</html>
+const $=s=>document.querySelector(s);
+const fmt=n=>n==null?"–":new Intl.NumberFormat("de-DE").format(n);
+const date=v=>v?new Date(v).toLocaleDateString("de-DE"):"–";
+let D=null;
+function latest(p){return p.snapshots?.at(-1)||{}}
+function card(p){const m=p.membership||{},l=latest(p);return `<article class="player-card hof-card"><div class="player-meta"><span class="member-status ${p.is_active?'active':'former'}">${p.is_active?'Aktiv':'Ehemalig'}</span><a href="player.html?id=${p.id}">Historie →</a></div><h3>${p.name}</h3><div class="metric-row"><span>Beitritt erfasst</span><strong>${date(m.joined_at||p.first_seen)}</strong></div><div class="metric-row"><span>${p.is_active?'Mitglied seit':'Austritt erfasst'}</span><strong>${p.is_active?`${fmt(p.membership_days)} Tage`:date(m.left_at)}</strong></div><div class="metric-row"><span>Zeit in der Allianz</span><strong>${fmt(p.membership_days)} Tage</strong></div><div class="metric-row"><span>Letzte Gesamtpunkte</span><strong>${fmt(l.total_points)}</strong></div><div class="metric-row"><span>Letzter Rang</span><strong>${fmt(l.total_rank)}</strong></div><div class="metric-row"><span>Letzter Snapshot</span><strong>${l.date||'–'}</strong></div></article>`}
+function render(){const q=$("#hofSearch").value.trim().toLowerCase(),all=D.players.filter(p=>p.name.toLowerCase().includes(q)),active=all.filter(p=>p.is_active),former=all.filter(p=>!p.is_active);$("#activeMembers").innerHTML=active.map(card).join('')||'<p class="muted">Keine aktiven Mitglieder gefunden.</p>';$("#formerMembers").innerHTML=former.map(card).join('')||'<p class="muted">Noch keine ehemaligen Mitglieder erfasst.</p>';$("#hofSummary").innerHTML=`<article class="summary-card"><span class="summary-label">Aktiv</span><strong class="summary-value">${active.length}</strong></article><article class="summary-card"><span class="summary-label">Ehemalig</span><strong class="summary-value">${former.length}</strong></article><article class="summary-card"><span class="summary-label">Gesamt erfasst</span><strong class="summary-value">${all.length}</strong></article>`}
+fetch('data.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{D=j;$("#subtitle").textContent=`${D.alliance?.tag?`[${D.alliance.tag}] · `:''}Aktive und bisherige Mitglieder`;$("#footer").textContent=`Erzeugt ${new Date(D.meta.generated_at).toLocaleString('de-DE')}`;render()}).catch(e=>$("#subtitle").textContent=`Fehler: ${e.message}`);
+$("#hofSearch").addEventListener('input',render);

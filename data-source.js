@@ -1,23 +1,88 @@
-# OGame Imperiumsübersicht v8.4.0
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OGame Imperiumsübersicht</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/ogame-favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/ogame-favicon-32.png">
+  <link rel="shortcut icon" href="../favicon.ico">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="account-header compact-account-header">
+    <div class="controls compact-controls">
+      <label>Account <select id="accountSelect"></select></label>
+      <label>Tagesstand <select id="snapshotSelect"></select></label>
+      <button id="reloadButton" class="reload-button" type="button">↻ Neu laden</button>
+    </div>
+    <div class="account-meta compact-meta">
+      <div><span>Universum</span><strong id="universe">–</strong></div>
+      <div><span>Stand</span><strong id="latestSnapshot">–</strong></div>
+    </div>
+    <span id="playerName" class="sr-only"></span>
+  </header>
 
-## Änderungen
+  <main>
+    <section id="message" class="message hidden"></section>
 
-- `account.html` ist jetzt eine eigene, aufgeräumte Seite für die Imperiumsübersicht.
-- Der alte Bereich „Accountdaten“ wurde entfernt.
-- Die Umschaltung „Dashboard“ wurde entfernt; die neue Ansicht ist direkt geöffnet.
-- Die Datenquellen-Auswahl wurde vollständig entfernt.
-- Die private Accountansicht verwendet fest Supabase.
-- In der Hauptnavigation heißt der Link nun „Imperiumsübersicht“.
-- In den Planetenkarten werden große SVG-Icons für Metall, Kristall und Deuterium verwendet.
-- Die Produktionswerte in den Karten sind größer und schneller lesbar.
-- Die Lebensform wird primär anhand der tatsächlich gebauten Lebensformgebäude erkannt. Dadurch wird Rock’tal nicht mehr fälschlich als Menschen angezeigt.
-- Die Bonusspalte ist nur noch im Reiter „Forschung“ sichtbar.
-- Normale Forschungen zeigen bekannte aktuelle Boni, z. B. Laderaum, Panzerung, Waffen, Schilde, Triebwerke und Plasmaförderung.
-- Lebensformforschungen bleiben je Volk einklappbar; die aktuelle Lebensform wird geöffnet.
-- „Schiffswerft“ heißt „Flotte“.
+    <section class="celestial-stage" aria-live="polite">
+      <div class="stage-heading">
+        <div>
+          <p id="stageTitle">PLANETEN IM VORDERGRUND</p>
+          <span id="stageHint">Klicke auf den Mond, um die Monde anzuzeigen</span>
+        </div>
+        <div class="stage-count"><span>Planeten / Monde</span><strong id="planetCount">–</strong></div>
+      </div>
+      <div id="celestialCards" class="celestial-cards"></div>
+    </section>
 
-## Installation
+    <nav id="dashboardTabs" class="dashboard-tabs" aria-label="Accountbereiche">
+      <button type="button" data-tab="overview" class="active"><span class="tab-icon">⌾</span><span>Übersicht</span></button>
+      <button type="button" data-tab="production"><span class="tab-icon">▰</span><span>Produktion</span></button>
+      <button type="button" data-tab="buildings"><span class="tab-icon">▣</span><span>Versorgung</span></button>
+      <button type="button" data-tab="research"><span class="tab-icon">⚗</span><span>Forschung</span></button>
+      <button type="button" data-tab="facilities"><span class="tab-icon">▥</span><span>Anlagen</span></button>
+      <button type="button" data-tab="ships"><span class="tab-icon">◉</span><span>Flotte</span></button>
+      <button type="button" data-tab="defenses"><span class="tab-icon">⬡</span><span>Verteidigung</span></button>
+    </nav>
 
-Den Inhalt dieses Projektordners über den aktuellen Repository-Inhalt kopieren und veröffentlichen.
+    <section class="period-strip" id="productionPeriodStrip">
+      <span>Produktionszeitraum</span>
+      <div class="period-tabs">
+        <button type="button" data-period="1">1h</button>
+        <button type="button" data-period="24" class="active">24h</button>
+        <button type="button" data-period="168">1w</button>
+      </div>
+    </section>
 
-Wichtig: `account-data.json` und `account-data-source.js` wurden absichtlich entfernt, da sie nur zur alten Accountdaten-Ansicht gehörten.
+    <section class="empire-shell">
+      <div class="detail-title">
+        <span id="detailTabTitle">Übersicht</span>
+        <small id="detailModeLabel">Planeten</small>
+      </div>
+      <div class="empire-scroll">
+        <table id="empireTable">
+          <thead id="empireHead"></thead>
+          <tbody id="empireBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Bestehende Kennzahlen bleiben für die Datenlogik vorhanden. -->
+    <section class="sr-only" aria-hidden="true">
+      <span id="metalPeriodLabel"></span><strong id="totalMetal"></strong>
+      <span id="crystalPeriodLabel"></span><strong id="totalCrystal"></strong>
+      <span id="deutPeriodLabel"></span><strong id="totalDeuterium"></strong>
+      <span id="sumPeriodLabel"></span><strong id="totalProduction"></strong>
+      <strong id="stationedShips"></strong><strong id="travellingShips"></strong>
+      <small id="travellingHint"></small><strong id="allShips"></strong>
+    </section>
+  </main>
+
+  <footer>Private Imperiumsübersicht · Planeten und Monde</footer>
+
+  <script src="data-source.js"></script>
+  <script src="app.js?v=8.5.0"></script>
+</body>
+</html>
