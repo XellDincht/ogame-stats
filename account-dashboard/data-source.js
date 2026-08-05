@@ -7,7 +7,7 @@
   const snapshotMetaBySourceId = new Map();
 
   function source() {
-    return localStorage.getItem(STORAGE_KEY) === "supabase" ? "supabase" : "local";
+    return "supabase";
   }
 
   async function localJson(path) {
@@ -269,13 +269,11 @@
   }
 
   async function load() {
-    return source() === "supabase" ? loadSupabaseMetadata() : loadLocal();
+    return loadSupabaseMetadata();
   }
 
   async function loadSnapshot(sourceSnapshotId) {
-    return source() === "supabase"
-      ? loadSupabaseSnapshot(sourceSnapshotId)
-      : loadLocalSnapshot(sourceSnapshotId);
+    return loadSupabaseSnapshot(sourceSnapshotId);
   }
 
   window.ogameAccountDashboardDataSource = Object.freeze({

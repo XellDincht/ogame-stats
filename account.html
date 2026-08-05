@@ -1,42 +1,39 @@
 <!doctype html>
 <html lang="de">
-
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="theme-color" content="#07111f">
-    <title>OGame Accountstatistik</title>
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
+  <title>OGame Imperiumsübersicht</title>
+  <link rel="icon" type="image/svg+xml" href="./assets/ogame-favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/ogame-favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="./assets/ogame-favicon-16.png">
+  <link rel="shortcut icon" href="./favicon.ico">
+  <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="auth.css">
-    <link rel="stylesheet" href="account.css">
+  <link rel="stylesheet" href="account.css">
 </head>
+<body class="auth-protected account-overview-page">
+  <div id="app">
+    <nav class="toolbar account-overview-toolbar">
+      <div class="range-tabs">
+        <a class="nav-link" href="index.html">Allianzstatistik</a>
+        <a class="nav-link" href="player.html">Spieler-Historie</a>
+        <a class="nav-link" href="hall-of-fame.html">Hall of Fame</a>
+        <a class="nav-link" href="messages.html">Nachrichten</a>
+        <span class="nav-link active">Imperiumsübersicht</span>
+      </div>
+      <button type="button" data-auth-logout>Abmelden</button>
+    </nav>
 
-<body class="auth-protected">
-    <div id="app">
-        <header class="hero">
-            <div class="hero-inner">
-                <p class="eyebrow">Private Account Intelligence</p>
-                <h1 id="accountTitle">Accountstatistik</h1>
-                <p id="accountSubtitle">Daten werden geladen …</p>
-            </div>
-        </header>
-        <nav class="toolbar">
-            <div class="range-tabs"><a class="nav-link" href="index.html">Allianzstatistik</a><a class="nav-link" href="messages.html">Nachrichten</a>
-                <select id="accountPlayer"></select><label class="account-source-control" for="accountDataSource"><span>Datenquelle</span><select id="accountDataSource"><option value="local">Lokal / JSON</option><option value="supabase">Supabase</option></select></label><button id="showAccountStats" class="nav-link account-view-button"
-                    type="button">Accountdaten</button><button id="showDashboard" class="nav-link account-view-button"
-                    type="button">Dashboard</button>
-            </div><button type="button" data-auth-logout>Abmelden</button>
-        </nav>
-        <main id="accountMain"></main>
-        <section id="dashboardView" class="protected-dashboard" hidden><iframe id="dashboardFrame"
-                title="Privates OGame Dashboard" loading="lazy"></iframe></section>
-        <footer id="accountFooter"></footer>
-    </div>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <main class="account-overview-main">
+      <iframe id="accountOverviewFrame" title="Private OGame Imperiumsübersicht" src="account-dashboard/index.html?v=8.4.0"></iframe>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script src="auth.js"></script>
-  <script src="account-data-source.js?v=1.0.0"></script>
-  <script src="account.js?v=8.0.0"></script>
+  <script src="account.js?v=8.4.0"></script>
 </body>
-
 </html>

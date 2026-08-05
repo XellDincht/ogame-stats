@@ -160,6 +160,14 @@ function productionForPlanet(prods, planet) {
   return { metal, crystal, deut, sum: metal + crystal + deut };
 }
 
+function resourceIcon(type) {
+  const common = 'viewBox="0 0 32 32" aria-hidden="true" focusable="false"';
+  if (type === 'metal') return `<svg class="resource-svg metal-svg" ${common}><path d="M5 11 16 5l11 6-11 6L5 11Z"/><path d="m5 16 11 6 11-6"/><path d="m5 21 11 6 11-6"/></svg>`;
+  if (type === 'crystal') return `<svg class="resource-svg crystal-svg" ${common}><path d="m16 3 8 8-4 17H12L8 11l8-8Z"/><path d="m8 11 8 5 8-5M16 3v13M12 28l4-12 4 12"/></svg>`;
+  if (type === 'deut') return `<svg class="resource-svg deut-svg" ${common}><path d="M16 3c4 6 9 11 9 17a9 9 0 1 1-18 0c0-6 5-11 9-17Z"/><path d="M11 21c2 2 8 2 10-1"/></svg>`;
+  return `<svg class="resource-svg sum-svg" ${common}><path d="M23 6H9l8 10-8 10h14"/></svg>`;
+}
+
 function celestialCard(slot, prods, techRows) {
   const foreground = slot.active;
   const planet = slot.planet;
@@ -174,10 +182,10 @@ function celestialCard(slot, prods, techRows) {
   let stats = '';
   if (!moonMode) {
     stats = `
-      <div class="card-stat metal-stat"><span>M</span><strong>${prodFmt(production.metal)}</strong></div>
-      <div class="card-stat crystal-stat"><span>K</span><strong>${prodFmt(production.crystal)}</strong></div>
-      <div class="card-stat deut-stat"><span>D</span><strong>${prodFmt(production.deut)}</strong></div>
-      <div class="card-stat sum-stat"><span>Σ</span><strong>${prodFmt(production.sum)}</strong></div>
+      <div class="card-stat metal-stat"><span>${resourceIcon('metal')}</span><strong>${prodFmt(production.metal)}</strong></div>
+      <div class="card-stat crystal-stat"><span>${resourceIcon('crystal')}</span><strong>${prodFmt(production.crystal)}</strong></div>
+      <div class="card-stat deut-stat"><span>${resourceIcon('deut')}</span><strong>${prodFmt(production.deut)}</strong></div>
+      <div class="card-stat sum-stat"><span>${resourceIcon('sum')}</span><strong>${prodFmt(production.sum)}</strong></div>
     `;
   } else if (!missingMoon) {
     stats = `
@@ -247,6 +255,9 @@ function updateTabs() {
 
   const modeLabel = $('#detailModeLabel');
   if (modeLabel) modeLabel.textContent = state.objectMode === 'moon' ? 'Monde' : 'Planeten';
+
+  const table = $('#empireTable');
+  if (table) table.classList.toggle('show-bonus', state.activeTab === 'research');
 }
 
 function switchObjectMode() {
@@ -277,7 +288,7 @@ function overviewValueRows(slots, techRows) {
       <td class="label-col">${esc(label)}</td>
       ${values.map((value, index) => `<td class="${objects[index]?.is_placeholder ? 'missing-moon-cell' : ''}">${objects[index]?.is_placeholder ? '' : formatter(value)}</td>`).join('')}
       <td class="summary-col">${average == null ? '–' : fmt(average)}</td>
-      <td class="travelling-col">–</td>
+      <td class="travelling-col bonus-col">–</td>
       <td class="summary-col">${numeric.length ? fmt(total) : '–'}</td>
     </tr>`;
   };
@@ -344,14 +355,14 @@ function rowsForActiveTab(options) {
 function section(title, key, rows, subtitle = '') { if (!rows) return ''; return `<tr class="section-row" data-section="${key}"><td colspan="999"><button class="section-button" data-toggle="${key}"><span>${esc(title)}</span>${subtitle ? `<small>${esc(subtitle)}</small>` : ''}</button></td></tr>${rows}` }
 function deltaHtml(value, previous, formatter = fmt) { if (previous === null || previous === undefined) return ''; const d = (Number(value) || 0) - (Number(previous) || 0); const cls = d > 0 ? 'delta-positive' : d < 0 ? 'delta-negative' : 'delta-zero'; const sign = d > 0 ? '+' : ''; return `<span class="delta ${cls}">(${sign}${formatter(d)})</span>` }
 function periodLabel() { return state.productionHours === 1 ? '1h' : state.productionHours === 24 ? '24h' : '1w' }
-function productionRows(planets, prods, previousProds, hasPrevious) { const factor = state.productionHours; const label = periodLabel(); const defs = [['Metall', 'metal_per_hour', 'metal'], ['Kristall', 'crystal_per_hour', 'crystal'], ['Deuterium', 'deuterium_per_hour', 'deut']]; let rows = defs.map(([name, key, cls]) => { const vals = planets.map(p => (Number(prods.get(p.planet_id)?.[key]) || 0) * factor); const total = vals.reduce((a, b) => a + b, 0), avg = vals.length ? total / vals.length : 0; const prevTotal = planets.reduce((n, p) => n + ((Number(previousProds.get(p.planet_id)?.[key]) || 0) * factor), 0); return `<tr class="data-row production-row ${cls}" data-group="production"><td class="label-col">${name} / ${label}</td>${vals.map(v => `<td>${prodFmt(v)}</td>`).join('')}<td class="summary-col">${prodFmt(avg)}</td><td class="travelling-col">–</td><td class="summary-col"><span class="value-with-delta">${prodFmt(total)} ${deltaHtml(total, hasPrevious ? prevTotal : null, prodFmt)}</span></td></tr>` }).join(''); const sums = planets.map(p => { const r = prods.get(p.planet_id) || {}; return ((Number(r.metal_per_hour) || 0) + (Number(r.crystal_per_hour) || 0) + (Number(r.deuterium_per_hour) || 0)) * factor }); const total = sums.reduce((a, b) => a + b, 0), avg = sums.length ? total / sums.length : 0; const prevTotal = planets.reduce((n, p) => { const r = previousProds.get(p.planet_id) || {}; return n + ((Number(r.metal_per_hour) || 0) + (Number(r.crystal_per_hour) || 0) + (Number(r.deuterium_per_hour) || 0)) * factor }, 0); rows += `<tr class="data-row production-row production-sum-row" data-group="production"><td class="label-col">∑ Produktion / ${label}</td>${sums.map(v => `<td>${prodFmt(v)}</td>`).join('')}<td class="summary-col">${prodFmt(avg)}</td><td class="travelling-col">–</td><td class="summary-col"><span class="value-with-delta">${prodFmt(total)} ${deltaHtml(total, hasPrevious ? prevTotal : null, prodFmt)}</span></td></tr>`; const energyVals = planets.map(p => Number(prods.get(p.planet_id)?.energy_available || 0)); const energyTotal = energyVals.reduce((a, b) => a + b, 0), energyAvg = energyVals.length ? energyTotal / energyVals.length : 0; rows += `<tr class="data-row production-row energy" data-group="production"><td class="label-col">Energie</td>${energyVals.map(v => `<td>${prodFmt(v)}</td>`).join('')}<td class="summary-col">${prodFmt(energyAvg)}</td><td class="travelling-col">–</td><td class="summary-col">${prodFmt(energyTotal)}</td></tr>`; return rows }
+function productionRows(planets, prods, previousProds, hasPrevious) { const factor = state.productionHours; const label = periodLabel(); const defs = [['Metall', 'metal_per_hour', 'metal'], ['Kristall', 'crystal_per_hour', 'crystal'], ['Deuterium', 'deuterium_per_hour', 'deut']]; let rows = defs.map(([name, key, cls]) => { const vals = planets.map(p => (Number(prods.get(p.planet_id)?.[key]) || 0) * factor); const total = vals.reduce((a, b) => a + b, 0), avg = vals.length ? total / vals.length : 0; const prevTotal = planets.reduce((n, p) => n + ((Number(previousProds.get(p.planet_id)?.[key]) || 0) * factor), 0); return `<tr class="data-row production-row ${cls}" data-group="production"><td class="label-col">${name} / ${label}</td>${vals.map(v => `<td>${prodFmt(v)}</td>`).join('')}<td class="summary-col">${prodFmt(avg)}</td><td class="travelling-col bonus-col">–</td><td class="summary-col"><span class="value-with-delta">${prodFmt(total)} ${deltaHtml(total, hasPrevious ? prevTotal : null, prodFmt)}</span></td></tr>` }).join(''); const sums = planets.map(p => { const r = prods.get(p.planet_id) || {}; return ((Number(r.metal_per_hour) || 0) + (Number(r.crystal_per_hour) || 0) + (Number(r.deuterium_per_hour) || 0)) * factor }); const total = sums.reduce((a, b) => a + b, 0), avg = sums.length ? total / sums.length : 0; const prevTotal = planets.reduce((n, p) => { const r = previousProds.get(p.planet_id) || {}; return n + ((Number(r.metal_per_hour) || 0) + (Number(r.crystal_per_hour) || 0) + (Number(r.deuterium_per_hour) || 0)) * factor }, 0); rows += `<tr class="data-row production-row production-sum-row" data-group="production"><td class="label-col">∑ Produktion / ${label}</td>${sums.map(v => `<td>${prodFmt(v)}</td>`).join('')}<td class="summary-col">${prodFmt(avg)}</td><td class="travelling-col bonus-col">–</td><td class="summary-col"><span class="value-with-delta">${prodFmt(total)} ${deltaHtml(total, hasPrevious ? prevTotal : null, prodFmt)}</span></td></tr>`; const energyVals = planets.map(p => Number(prods.get(p.planet_id)?.energy_available || 0)); const energyTotal = energyVals.reduce((a, b) => a + b, 0), energyAvg = energyVals.length ? energyTotal / energyVals.length : 0; rows += `<tr class="data-row production-row energy" data-group="production"><td class="label-col">Energie</td>${energyVals.map(v => `<td>${prodFmt(v)}</td>`).join('')}<td class="summary-col">${prodFmt(energyAvg)}</td><td class="travelling-col bonus-col">–</td><td class="summary-col">${prodFmt(energyTotal)}</td></tr>`; return rows }
 function technologyDefs(category, techRows, predicate = () => true) { const defs = []; const seen = new Set(); for (const t of techRows.filter(t => t.category === category && predicate(t))) { const k = String(t.technology_id); if (!seen.has(k)) { seen.add(k); defs.push({ id: k, name: technologyName(t) }) } } return defs.sort((a, b) => (Number(a.id) || 999999) - (Number(b.id) || 999999)) }
 function technologyRows(category, planets, techRows, travelling, predicate = () => true, groupKey = category, previousTechRows = [], hasPrevious = false) {
   const rows = techRows.filter(t => t.category === category && predicate(t)); const defs = technologyDefs(category, techRows, predicate); if (!defs.length) return '';
   const byPlanet = new Map(planets.map(p => [p.planet_id, new Map()])); const previousByPlanet = new Map(planets.map(p => [p.planet_id, new Map()])); const accountValues = new Map(); const previousAccountValues = new Map(); const previousTotals = new Map();
   for (const t of previousTechRows.filter(t => t.category === category && predicate(t))) { const id = String(t.technology_id), value = Number(t.value) || 0; previousTotals.set(id, (previousTotals.get(id) || 0) + value); if (t.planet_id == null) { const old = previousAccountValues.get(id); if (old === undefined || value > old) previousAccountValues.set(id, value) } else previousByPlanet.get(t.planet_id)?.set(id, value) }
   for (const t of rows) { if (t.planet_id == null) { const old = accountValues.get(String(t.technology_id)); if (!old || Number(t.value) > Number(old.value)) accountValues.set(String(t.technology_id), t) } else byPlanet.get(t.planet_id)?.set(String(t.technology_id), t) }
-  return defs.map(d => { const accountValue = Number(accountValues.get(d.id)?.value || 0); const previousAccountValue = Number(previousAccountValues.get(d.id) || 0); const vals = planets.map(p => { const own = byPlanet.get(p.planet_id)?.get(d.id); return own ? Number(own.value || 0) : (category === 'research' && accountValue ? accountValue : 0) }); const previousVals = planets.map(p => { const own = previousByPlanet.get(p.planet_id)?.get(d.id); return own !== undefined ? Number(own || 0) : (category === 'research' && previousAccountValue ? previousAccountValue : 0) }); const max = Math.max(...vals, accountValue, 0), sum = vals.reduce((a, b) => a + b, 0), avg = vals.length ? sum / vals.length : 0; const moving = category === 'ships' ? shipValue(travelling, d.name, d.id) : 0; const total = category === 'research' ? (accountValue || max) : sum + moving; const prev = category === 'research' ? previousAccountValue : (previousTotals.get(d.id) || 0); const showCellDelta = category !== 'ships'; return `<tr class="data-row" data-group="${groupKey}"><td class="label-col"><span class="tech-label">${esc(d.name)}</span></td>${vals.map((v, i) => `<td class="${planets[i]?.is_placeholder ? 'missing-moon-cell ' : ''}${v === 0 ? 'zero ' : ''}${v === max && max > 0 ? 'high' : ''}"><span class="value-with-delta">${fmt(v)} ${showCellDelta ? deltaHtml(v, hasPrevious ? previousVals[i] : null, fmt) : ''}</span></td>`).join('')}<td class="summary-col">${category === 'ships' || category === 'defenses' ? fmt(avg) : avg.toLocaleString('de-DE', { maximumFractionDigits: 1 })}</td><td class="travelling-col bonus-col">${category === 'lifeform_research' ? lifeformBonusText(d.id, sum) : '–'}</td><td class="summary-col"><span class="value-with-delta">${fmt(total)} ${category === 'ships' ? '' : deltaHtml(total, hasPrevious ? prev : null, fmt)}</span></td></tr>` }).join('')
+  return defs.map(d => { const accountValue = Number(accountValues.get(d.id)?.value || 0); const previousAccountValue = Number(previousAccountValues.get(d.id) || 0); const vals = planets.map(p => { const own = byPlanet.get(p.planet_id)?.get(d.id); return own ? Number(own.value || 0) : (category === 'research' && accountValue ? accountValue : 0) }); const previousVals = planets.map(p => { const own = previousByPlanet.get(p.planet_id)?.get(d.id); return own !== undefined ? Number(own || 0) : (category === 'research' && previousAccountValue ? previousAccountValue : 0) }); const max = Math.max(...vals, accountValue, 0), sum = vals.reduce((a, b) => a + b, 0), avg = vals.length ? sum / vals.length : 0; const moving = category === 'ships' ? shipValue(travelling, d.name, d.id) : 0; const total = category === 'research' ? (accountValue || max) : sum + moving; const prev = category === 'research' ? previousAccountValue : (previousTotals.get(d.id) || 0); const showCellDelta = category !== 'ships'; return `<tr class="data-row" data-group="${groupKey}"><td class="label-col"><span class="tech-label">${esc(d.name)}</span></td>${vals.map((v, i) => `<td class="${planets[i]?.is_placeholder ? 'missing-moon-cell ' : ''}${v === 0 ? 'zero ' : ''}${v === max && max > 0 ? 'high' : ''}"><span class="value-with-delta">${fmt(v)} ${showCellDelta ? deltaHtml(v, hasPrevious ? previousVals[i] : null, fmt) : ''}</span></td>`).join('')}<td class="summary-col">${category === 'ships' || category === 'defenses' ? fmt(avg) : avg.toLocaleString('de-DE', { maximumFractionDigits: 1 })}</td><td class="travelling-col bonus-col">${category === 'lifeform_research' ? lifeformBonusText(d.id, sum) : (category === 'research' ? normalResearchBonusText(d.id, total) : '–')}</td><td class="summary-col"><span class="value-with-delta">${fmt(total)} ${category === 'ships' ? '' : deltaHtml(total, hasPrevious ? prev : null, fmt)}</span></td></tr>` }).join('')
 }
 function normalTech(t) { return Number(t.technology_id) < 10000 }
 const LIFEFORM_RACES = [
@@ -375,17 +386,24 @@ const LIFEFORM_RESEARCH_BONUS = {
 };
 
 function inferredLifeformName(object, techRows) {
-  if (object?.lifeform_name) return object.lifeform_name;
   if (!object || object.is_placeholder) return '';
-  const prefixes = techRows
-    .filter(row => row.planet_id === object.planet_id && (row.category === 'lifeform_buildings' || row.category === 'lifeform_research'))
+
+  // Lebensformgebäude sind eindeutig an die aktuell gewählte Lebensform gebunden.
+  // Lebensformforschungen können dagegen aus mehreren Völkern gewählt sein und
+  // dürfen deshalb nicht zur Erkennung verwendet werden.
+  const buildingPrefixes = techRows
+    .filter(row => row.planet_id === object.planet_id && row.category === 'lifeform_buildings' && Number(row.value) > 0)
     .map(row => Math.floor(Number(row.technology_id) / 1000))
     .filter(prefix => LIFEFORM_BY_PREFIX.has(prefix));
-  if (!prefixes.length) return '';
-  const counts = new Map();
-  for (const prefix of prefixes) counts.set(prefix, (counts.get(prefix) || 0) + 1);
-  const [prefix] = [...counts.entries()].sort((a,b) => b[1]-a[1])[0];
-  return LIFEFORM_BY_PREFIX.get(prefix) || '';
+
+  if (buildingPrefixes.length) {
+    const counts = new Map();
+    for (const prefix of buildingPrefixes) counts.set(prefix, (counts.get(prefix) || 0) + 1);
+    const [prefix] = [...counts.entries()].sort((a,b) => b[1]-a[1])[0];
+    return LIFEFORM_BY_PREFIX.get(prefix) || '';
+  }
+
+  return object.lifeform_name || '';
 }
 
 function currentLifeformRace(objects, techRows) {
@@ -395,6 +413,25 @@ function currentLifeformRace(objects, techRows) {
     if (name) counts.set(name, (counts.get(name) || 0) + 1);
   }
   return [...counts.entries()].sort((a,b) => b[1]-a[1])[0]?.[0] || null;
+}
+
+const NORMAL_RESEARCH_BONUS = {
+  '108': level => `+${fmt(level)} Flottenslots`,
+  '109': level => `+${fmt(level * 10)}% Waffenstärke`,
+  '110': level => `+${fmt(level * 10)}% Schildstärke`,
+  '111': level => `+${fmt(level * 10)}% Panzerung`,
+  '114': level => `+${fmt(level * 5)}% Laderaum`,
+  '115': level => `+${fmt(level * 10)}% Verbrennungstriebwerk`,
+  '117': level => `+${fmt(level * 20)}% Impulstriebwerk`,
+  '118': level => `+${fmt(level * 30)}% Hyperraumantrieb`,
+  '121': level => `−${fmt(level * 4)}% Abbruchkosten`,
+  '122': level => `+${fmt(level)}% Metall · +${(level * 0.66).toLocaleString('de-DE',{maximumFractionDigits:2})}% Kristall · +${(level * 0.33).toLocaleString('de-DE',{maximumFractionDigits:2})}% Deuterium`,
+  '123': level => `${fmt(level + 1)} Forschungslabore vernetzbar`
+};
+
+function normalResearchBonusText(technologyId, level) {
+  const fn = NORMAL_RESEARCH_BONUS[String(technologyId)];
+  return fn && level > 0 ? fn(level) : '–';
 }
 
 function lifeformBonusText(technologyId, totalLevel) {
@@ -575,7 +612,7 @@ async function init() {
     window.addEventListener('resize', () => setColumnWidth(buildObjectSlots(ownRows(state.planets, selectedSnapshot(account()))).length));
     await render();
   } catch (e) {
-    $('#message').textContent = `Dashboard konnte nicht geladen werden: ${e.message}`;
+    $('#message').textContent = `Imperiumsübersicht konnte nicht geladen werden: ${e.message}`;
     $('#message').classList.remove('hidden');
   }
 }
