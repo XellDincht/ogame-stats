@@ -12,6 +12,9 @@ on:
     - cron: "41 5 * * *"
       timezone: "Europe/Vienna"
 
+    - cron: "45 9 * * *"
+      timezone: "Europe/Vienna"
+
 permissions:
   contents: read
 
