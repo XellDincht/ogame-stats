@@ -12,7 +12,7 @@ on:
     - cron: "41 5 * * *"
       timezone: "Europe/Vienna"
 
-    - cron: "50 7 * * *"
+    - cron: "*/5 * * * *"
       
 
 permissions:
