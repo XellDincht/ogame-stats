@@ -1,88 +1,51 @@
-<!doctype html>
-<html lang="de">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OGame Imperiumsübersicht</title>
-  <link rel="icon" type="image/svg+xml" href="../assets/ogame-favicon.svg">
-  <link rel="icon" type="image/png" sizes="32x32" href="../assets/ogame-favicon-32.png">
-  <link rel="shortcut icon" href="../favicon.ico">
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-  <header class="account-header compact-account-header">
-    <div class="controls compact-controls">
-      <label>Account <select id="accountSelect"></select></label>
-      <label>Tagesstand <select id="snapshotSelect"></select></label>
-      <button id="reloadButton" class="reload-button" type="button">↻ Neu laden</button>
-    </div>
-    <div class="account-meta compact-meta">
-      <div><span>Universum</span><strong id="universe">–</strong></div>
-      <div><span>Stand</span><strong id="latestSnapshot">–</strong></div>
-    </div>
-    <span id="playerName" class="sr-only"></span>
-  </header>
+name: OGame Public Collector
 
-  <main>
-    <section id="message" class="message hidden"></section>
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "12 6 * * *"
+      timezone: "Europe/Vienna"
+    
+    - cron: "27 6 * * *"
+      timezone: "Europe/Vienna"
 
-    <section class="celestial-stage" aria-live="polite">
-      <div class="stage-heading">
-        <div>
-          <p id="stageTitle">PLANETEN IM VORDERGRUND</p>
-          <span id="stageHint">Klicke auf den Mond, um die Monde anzuzeigen</span>
-        </div>
-        <div class="stage-count"><span>Planeten / Monde</span><strong id="planetCount">–</strong></div>
-      </div>
-      <div id="celestialCards" class="celestial-cards"></div>
-    </section>
+    - cron: "41 5 * * *"
+      timezone: "Europe/Vienna"
 
-    <nav id="dashboardTabs" class="dashboard-tabs" aria-label="Accountbereiche">
-      <button type="button" data-tab="overview" class="active"><span class="tab-icon">⌾</span><span>Übersicht</span></button>
-      <button type="button" data-tab="production"><span class="tab-icon">▰</span><span>Produktion</span></button>
-      <button type="button" data-tab="buildings"><span class="tab-icon">▣</span><span>Versorgung</span></button>
-      <button type="button" data-tab="research"><span class="tab-icon">⚗</span><span>Forschung</span></button>
-      <button type="button" data-tab="facilities"><span class="tab-icon">▥</span><span>Anlagen</span></button>
-      <button type="button" data-tab="ships"><span class="tab-icon">◉</span><span>Flotte</span></button>
-      <button type="button" data-tab="defenses"><span class="tab-icon">⬡</span><span>Verteidigung</span></button>
-    </nav>
+    - cron: "*/5 * * * *"
+      
 
-    <section class="period-strip" id="productionPeriodStrip">
-      <span>Produktionszeitraum</span>
-      <div class="period-tabs">
-        <button type="button" data-period="1">1h</button>
-        <button type="button" data-period="24" class="active">24h</button>
-        <button type="button" data-period="168">1w</button>
-      </div>
-    </section>
+permissions:
+  contents: read
 
-    <section class="empire-shell">
-      <div class="detail-title">
-        <span id="detailTabTitle">Übersicht</span>
-        <small id="detailModeLabel">Planeten</small>
-      </div>
-      <div class="empire-scroll">
-        <table id="empireTable">
-          <thead id="empireHead"></thead>
-          <tbody id="empireBody"></tbody>
-        </table>
-      </div>
-    </section>
+concurrency:
+  group: ogame-public-collector
+  cancel-in-progress: false
 
-    <!-- Bestehende Kennzahlen bleiben für die Datenlogik vorhanden. -->
-    <section class="sr-only" aria-hidden="true">
-      <span id="metalPeriodLabel"></span><strong id="totalMetal"></strong>
-      <span id="crystalPeriodLabel"></span><strong id="totalCrystal"></strong>
-      <span id="deutPeriodLabel"></span><strong id="totalDeuterium"></strong>
-      <span id="sumPeriodLabel"></span><strong id="totalProduction"></strong>
-      <strong id="stationedShips"></strong><strong id="travellingShips"></strong>
-      <small id="travellingHint"></small><strong id="allShips"></strong>
-    </section>
-  </main>
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
 
-  <footer>Private Imperiumsübersicht · Planeten und Monde</footer>
+    steps:
+      - name: Repository laden
+        uses: actions/checkout@v4
 
-  <script src="data-source.js"></script>
-  <script src="app.js?v=8.5.0"></script>
-</body>
-</html>
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: collector/requirements.txt
+
+      - name: Abhängigkeiten installieren
+        run: python -m pip install --disable-pip-version-check -r collector/requirements.txt
+
+      - name: Öffentliche OGame-Statistik abrufen
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OGAME_UNIVERSE: ${{ secrets.OGAME_UNIVERSE }}
+          OGAME_ALLIANCE_ID: ${{ secrets.OGAME_ALLIANCE_ID }}
+          OGAME_TIMEZONE: Europe/Vienna
+        run: python collector/main.py
