@@ -2,16 +2,7 @@ name: OGame Public Collector
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "12 6 * * *"
-      timezone: "Europe/Vienna"
-    
-    - cron: "27 6 * * *"
-      timezone: "Europe/Vienna"
-
-    - cron: "41 5 * * *"
-      timezone: "Europe/Vienna"  
-
+ 
 permissions:
   contents: read
 
