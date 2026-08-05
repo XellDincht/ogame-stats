@@ -1,0 +1,19 @@
+name: Scheduler Test
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Geplanten Lauf bestätigen
+        run: |
+          echo "Scheduler wurde ausgelöst"
+          echo "Event: ${{ github.event_name }}"
+          date -u
