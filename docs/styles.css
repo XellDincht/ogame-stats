@@ -70,8 +70,28 @@
   visibility:visible;
   transform:translate(-50%,0);
 }
-.history-delta-positive{box-shadow:inset 0 -2px #4fc77b}
-.history-delta-negative{box-shadow:inset 0 -2px #e06464}
-.history-delta-neutral{box-shadow:inset 0 -2px #647685}
 .history-delta-positive::after{color:#76e39a!important;border-color:#347a4c!important}
 .history-delta-negative::after{color:#ff8f8f!important;border-color:#8b4141!important}
+
+
+/* v8.7.4 Spieler-Historie */
+.history-table-wrap{
+  position:relative;
+  overflow:auto;
+}
+#historyTable th:first-child,
+#historyTable td:first-child{
+  position:sticky;
+  left:0;
+  z-index:4;
+  min-width:180px;
+  background:#0c2130;
+  box-shadow:1px 0 0 #31536d,8px 0 14px #0007;
+}
+#historyTable thead th:first-child{
+  z-index:7;
+  background:#102536;
+}
+.history-value-cell{
+  box-shadow:none!important;
+}

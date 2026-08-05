@@ -577,3 +577,20 @@ html, body {
 #lfGlobalBonus .lf-global-bonus{
   display:inline-flex;
 }
+
+
+/* v8.7.4 */
+html,body{
+  min-height:0!important;
+  height:auto!important;
+  overflow-y:hidden!important;
+}
+.lf-building-card-bonus{
+  display:flex!important;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+.lf-building-card-bonus strong{
+  font-size:10px;
+}

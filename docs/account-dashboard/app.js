@@ -1,4 +1,4 @@
-console.info('[OGame] Imperiumsübersicht app.js v8.7.3 geladen');
+console.info('[OGame] Imperiumsübersicht app.js v8.7.4 geladen');
 const state = { summary: null, snapshots: [], planets: [], production: [], technologies: [], flights: [], selectedAccount: null, selectedSnapshot: null, productionHours: 24, renderToken: 0, objectMode: 'planet', activeTab: 'overview' };
 const $ = s => document.querySelector(s); const nf = new Intl.NumberFormat('de-DE');
 const percentFmt = value => Number(value || 0).toLocaleString('de-DE', {
@@ -32,22 +32,15 @@ const LIFEFORM_TECH_NAMES = {
 function technologyName(t) { const raw = String(t.name || t.technology_name || '').trim(); const id = String(t.technology_id); if (raw && !/^Technologie\s+\d+$/i.test(raw)) return raw; return LIFEFORM_TECH_NAMES[id] || raw || `Technologie ${id}` }
 let heightFrame = 0;
 function measuredDocumentHeight() {
-  const body = document.body;
-  const root = document.documentElement;
   const main = document.querySelector('main');
   const footer = document.querySelector('footer');
-  const bottom = Math.max(
-    main?.getBoundingClientRect().bottom || 0,
-    footer?.getBoundingClientRect().bottom || 0
-  );
+  const mainBottom = main?.getBoundingClientRect().bottom || 0;
+  const footerBottom = footer?.getBoundingClientRect().bottom || 0;
 
-  return Math.ceil(Math.max(
-    body?.scrollHeight || 0,
-    body?.offsetHeight || 0,
-    root?.scrollHeight || 0,
-    root?.offsetHeight || 0,
-    bottom
-  ) + 4);
+  // Nur reale Inhaltsunterkante messen. documentElement/body scrollHeight
+  // enthalten im iframe die bereits gesetzte Viewport-Höhe und würden
+  // eine Endlosschleife erzeugen.
+  return Math.ceil(Math.max(mainBottom, footerBottom, 480) + 2);
 }
 
 function notifyParentHeight(force = false) {
@@ -288,7 +281,6 @@ function celestialCard(slot, prods, techRows) {
 
     <div class="card-stats${moonMode ? ' moon-card-stats' : ''}">${stats}</div>
     ${!moonMode && !missingMoon ? `<div class="lf-building-card-bonus" title="Lokaler Bonus aus Lebensformgebäuden">
-      <span>LF-Gebäude</span>
       <strong>${effectText(localLifeformBuildingSummary(planet.planet_id, techRows))}</strong>
     </div>` : ''}
   </article>`;
@@ -806,7 +798,6 @@ if ('MutationObserver' in window) {
   new MutationObserver(scheduleHeightMeasurements).observe(document.body, {
     childList: true,
     subtree: true,
-    attributes: true,
     characterData: true
   });
 }
