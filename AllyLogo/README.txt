@@ -1,0 +1,1 @@
+Nicht löschen, wird verwendet für Ingame AllyLogo
