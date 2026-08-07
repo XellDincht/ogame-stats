@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OGame Stats Companion
 // @namespace    https://github.com/XellDincht/ogame-stats
-// @version      7.14.0
+// @version      7.14.1
 // @description  Empire-Collector mit Mondfeldern, Supabase-Upload und geräteübergreifendem Kampfberichte-Loot.
 // @match        https://s282-de.ogame.gameforge.com/game/index.php*
 // @grant        GM_xmlhttpRequest
@@ -3184,37 +3184,38 @@
   }
 
   async function combatUpdateReports() {
-    const button=document.querySelector("#oas-combat-update");
-    const state=document.querySelector("#oas-combat-state");
-    if(button) button.disabled=true;
-    if(state) state.textContent="Geladene Kampfberichte werden ausgewertet …";
+    const button = document.querySelector("#oas-combat-update");
+    const state = document.querySelector("#oas-combat-state");
+
+    if (button) button.disabled = true;
+    if (state) state.textContent = "Kampfberichte werden vorbereitet …";
+
     try {
-      const messageNodes = combatCollectLoadedMessageNodes();
-      if (!messageNodes.length) {
-        throw new Error("Keine geladenen Nachrichten gefunden. Bitte zuerst Nachrichten → Kampfberichte öffnen und kurz warten.");
-      }
-
       const previous = combatLoad();
-      const currentReports = {};
-      let dailyReports = combatPruneDailyReports(previous.daily_reports);
-      let parsed=0, fresh=0, skipped=0, errors=0;
+      let dailyReports = combatPruneDailyReports(previous.daily_reports || {});
+      let currentReports = previous.current_reports || {};
+      const messageNodes = combatCollectLoadedMessageNodes();
+      let parsed = 0;
+      let fresh = 0;
+      let skipped = 0;
+      let errors = 0;
 
-      for(const messageNode of messageNodes) {
-        try {
-          const report=combatParseMessageNode(messageNode);
-          if(!report?.id){skipped++;continue;}
-          if(!previous.current_reports?.[report.id]) fresh++;
-          currentReports[report.id]=report;
-          if (combatIsToday(report)) dailyReports[report.id]=report;
-          parsed++;
-        } catch(error) {
-          errors++;
-          console.warn("[OGame Companion] Kampfbericht nicht lesbar", error, messageNode);
+      if (messageNodes.length) {
+        const parsedCurrentReports = {};
+        for (const messageNode of messageNodes) {
+          try {
+            const report = combatParseMessageNode(messageNode);
+            if (!report?.id) { skipped++; continue; }
+            if (!previous.current_reports?.[report.id]) fresh++;
+            parsedCurrentReports[report.id] = report;
+            if (combatIsToday(report)) dailyReports[report.id] = report;
+            parsed++;
+          } catch (error) {
+            errors++;
+            console.warn("[OGame Companion] Kampfbericht nicht lesbar", error, messageNode);
+          }
         }
-      }
-
-      if (!parsed) {
-        throw new Error(`Keine echten Kampfberichte erkannt (${skipped} andere Nachrichten, ${errors} Parserfehler).`);
+        if (parsed > 0) currentReports = parsedCurrentReports;
       }
 
       combatSave({ current_reports: currentReports, daily_reports: dailyReports });
@@ -3223,15 +3224,13 @@
       const session = loadSupabaseSession();
 
       if (session?.access_token) {
-        if(state) state.textContent="Kampfberichte werden mit Supabase synchronisiert …";
+        if (state) state.textContent = "Heutige Kampfberichte werden mit Supabase synchronisiert …";
         try {
-          const remoteToday = await combatSupabaseSyncToday(Object.values(currentReports));
+          const remoteToday = await combatSupabaseSyncToday(Object.values(dailyReports));
           const mergedToday = { ...dailyReports };
-
           for (const report of remoteToday) {
             if (report?.id) mergedToday[report.id] = report;
           }
-
           dailyReports = combatPruneDailyReports(mergedToday);
           combatSave({ current_reports: currentReports, daily_reports: dailyReports });
           syncText = `Supabase: ${Object.keys(dailyReports).length} heute`;
@@ -3244,18 +3243,29 @@
       }
 
       combatRender();
-      showMessage(
-        `${parsed} aktuell sichtbare Kampfberichte übernommen, ${fresh} neu · ${syncText}` +
-        `${skipped?`, ${skipped} andere Nachrichten ignoriert`:""}` +
-        `${errors?`, ${errors} fehlerhaft`:""}.`,
-        errors ? "info" : "success"
-      );
-    } catch(error) {
-      console.error("[OGame Companion] Kampfberichte konnten nicht ausgewertet werden", error);
-      showMessage(`Kampfbericht-Auswertung fehlgeschlagen: ${error.message}`, "error");
-      if(state) state.textContent="Auswertung fehlgeschlagen";
+      const localCount = Object.keys(dailyReports).length;
+      if (state) state.textContent = `${localCount} Kampfberichte heute - ${syncText}`;
+
+      if (parsed > 0) {
+        showMessage(
+          `${parsed} aktuell sichtbare Kampfberichte übernommen, ${fresh} neu - ${syncText}` +
+          `${skipped ? `, ${skipped} andere Nachrichten ignoriert` : ""}` +
+          `${errors ? `, ${errors} fehlerhaft` : ""}.`,
+          errors ? "info" : "success"
+        );
+      } else if (localCount > 0) {
+        showMessage(`Keine neuen Kampfberichte geladen. Vorhandener Tagesstand wurde synchronisiert - ${syncText}.`, "success");
+      } else if (session?.access_token) {
+        showMessage(`Keine lokalen oder geladenen Kampfberichte vorhanden - ${syncText}.`, "info");
+      } else {
+        showMessage("Keine geladenen Kampfberichte gefunden und Supabase ist nicht angemeldet.", "info");
+      }
+    } catch (error) {
+      console.error("[OGame Companion] Kampfberichte konnten nicht synchronisiert werden", error);
+      showMessage(`Kampfbericht-Sync fehlgeschlagen: ${error.message}`, "error");
+      if (state) state.textContent = "Synchronisierung fehlgeschlagen";
     } finally {
-      if(button) button.disabled=false;
+      if (button) button.disabled = false;
     }
   }
 
