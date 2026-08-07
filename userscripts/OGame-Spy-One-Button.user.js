@@ -1,45 +1,143 @@
 // ==UserScript==
 // @name         OGame Spy One-Button
-// @namespace    ogame-spy-one-button
-// @version      0.1.0
-// @description  Großer Ein-Knopf-Workflow für AGR-Spionageberichte: Spionieren -> bei Erfolg Löschen -> nächster Bericht.
+// @namespace    https://github.com/XellDincht/ogame-stats
+// @version      0.2.0
+// @description  Großer Ein-Knopf-Workflow für AGR-Spionageberichte mit 30-Minuten-Filter und sicherer Bericht-Zuordnung.
 // @match        https://*.ogame.gameforge.com/game/index.php*
 // @grant        unsafeWindow
-// @run-at       document-idle
 // @updateURL    https://raw.githubusercontent.com/XellDincht/ogame-stats/main/userscripts/OGame-Spy-One-Button.user.js
 // @downloadURL  https://raw.githubusercontent.com/XellDincht/ogame-stats/main/userscripts/OGame-Spy-One-Button.user.js
+// @run-at       document-idle
 // ==/UserScript==
 
 (function () {
     'use strict';
 
     const w = unsafeWindow;
+
     const CFG = {
         rowSelector: 'tr.row[id^="m_"]',
         eyeSelector: '.spyTableIcon.icon_eye',
         deleteSelector: '.spyTableIcon.icon_delete',
+        ageCellSelector: 'td.agoLeft.tooltipRight',
+
+        minAgeSeconds: 30 * 60,
+
         scanIntervalMs: 500,
         deleteTimeoutMs: 6000,
         ajaxPatchRetryMs: 500,
+        spyResponseTimeoutMs: 7000,
     };
 
     const State = {
         mode: 'scan', // scan | waiting | delete | error
         currentRowId: null,
+        currentCoords: null,
         currentTarget: null,
+
         ajaxPatched: false,
         pendingSpyRequest: false,
+
         deleteWatcher: null,
         lastErrorTimer: null,
     };
 
-    function firstSpyRow() {
-        const eyes = document.querySelectorAll(CFG.eyeSelector);
-        for (const eye of eyes) {
-            const row = eye.closest(CFG.rowSelector);
-            if (row && row.querySelector(CFG.deleteSelector)) return row;
+    // ------------------------------------------------------------
+    // Bericht / Alter
+    // ------------------------------------------------------------
+
+    function parseAgeToSeconds(text) {
+        if (!text) return null;
+
+        const value = String(text).trim().toLowerCase();
+        let total = 0;
+        let found = false;
+
+        // Unterstützt z.B.:
+        // 15m 48s
+        // 1h 03m
+        // 2d 4h
+        // 1w 2d
+        const patterns = [
+            { regex: /(\d+)\s*w/g, factor: 7 * 24 * 3600 },
+            { regex: /(\d+)\s*d/g, factor: 24 * 3600 },
+            { regex: /(\d+)\s*h/g, factor: 3600 },
+            { regex: /(\d+)\s*m/g, factor: 60 },
+            { regex: /(\d+)\s*s/g, factor: 1 },
+        ];
+
+        for (const p of patterns) {
+            for (const match of value.matchAll(p.regex)) {
+                total += Number(match[1]) * p.factor;
+                found = true;
+            }
         }
-        return null;
+
+        return found ? total : null;
+    }
+
+    function getRowAgeSeconds(row) {
+        const ageCell = row?.querySelector(CFG.ageCellSelector);
+        return parseAgeToSeconds(ageCell?.textContent || '');
+    }
+
+    function formatAge(seconds) {
+        if (seconds == null) return '?';
+
+        const d = Math.floor(seconds / 86400);
+        const h = Math.floor((seconds % 86400) / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = seconds % 60;
+
+        if (d > 0) return `${d}d ${h}h`;
+        if (h > 0) return `${h}h ${m}m`;
+        return `${m}m ${s}s`;
+    }
+
+    function allSpyRows() {
+        return [...document.querySelectorAll(CFG.rowSelector)]
+            .filter(row =>
+                row.querySelector(CFG.eyeSelector) &&
+                row.querySelector(CFG.deleteSelector)
+            );
+    }
+
+    function getCandidateInfo() {
+        const rows = allSpyRows();
+
+        let skippedYoung = 0;
+        let skippedUnknown = 0;
+
+        for (const row of rows) {
+            const ageSeconds = getRowAgeSeconds(row);
+
+            // Unbekannte Zeit sicherheitshalber nicht verwenden.
+            if (ageSeconds == null) {
+                skippedUnknown++;
+                continue;
+            }
+
+            if (ageSeconds < CFG.minAgeSeconds) {
+                skippedYoung++;
+                continue;
+            }
+
+            return {
+                row,
+                ageSeconds,
+                skippedYoung,
+                skippedUnknown,
+                totalRows: rows.length,
+            };
+        }
+
+        return {
+            row: null,
+            ageSeconds: null,
+            skippedYoung,
+            skippedUnknown,
+            totalRows: rows.length,
+        };
     }
 
     function rowInfo(row) {
@@ -56,8 +154,13 @@
             id: row.id,
             coords,
             player: player.replace(/\s*\(\d+\)\s*$/, '').trim(),
+            ageSeconds: getRowAgeSeconds(row),
         };
     }
+
+    // ------------------------------------------------------------
+    // UI
+    // ------------------------------------------------------------
 
     function makeUi() {
         if (document.getElementById('ogame-spy-onebutton')) return;
@@ -72,6 +175,7 @@
                 <span class="oso-label">SPIONIEREN</span>
             </button>
             <div class="oso-status">Warte auf Spionageberichte …</div>
+            <div class="oso-skip"></div>
         `;
 
         const style = document.createElement('style');
@@ -81,7 +185,7 @@
                 right: 24px;
                 top: 50%;
                 transform: translateY(-50%);
-                width: 245px;
+                width: 255px;
                 padding: 14px;
                 box-sizing: border-box;
                 z-index: 999999;
@@ -103,12 +207,19 @@
             }
 
             #ogame-spy-onebutton .oso-target {
-                min-height: 34px;
+                min-height: 50px;
                 margin-bottom: 10px;
                 text-align: center;
                 line-height: 17px;
                 font-size: 13px;
                 color: #a9c8e8;
+            }
+
+            #ogame-spy-onebutton .oso-age {
+                display: inline-block;
+                margin-top: 4px;
+                font-size: 12px;
+                opacity: .85;
             }
 
             #ogame-spy-onebutton .oso-button {
@@ -156,7 +267,15 @@
                 font-size: 11px;
                 line-height: 14px;
                 text-align: center;
-                opacity: .76;
+                opacity: .78;
+            }
+
+            #ogame-spy-onebutton .oso-skip {
+                margin-top: 4px;
+                font-size: 10px;
+                line-height: 13px;
+                text-align: center;
+                opacity: .55;
             }
 
             #ogame-spy-onebutton[data-mode="delete"] .oso-button {
@@ -189,6 +308,7 @@
             label: box?.querySelector('.oso-label'),
             target: box?.querySelector('.oso-target'),
             status: box?.querySelector('.oso-status'),
+            skip: box?.querySelector('.oso-skip'),
         };
     }
 
@@ -202,8 +322,7 @@
         if (mode === 'scan') {
             x.icon.textContent = '🛰';
             x.label.textContent = 'SPIONIEREN';
-            x.button.disabled = !firstSpyRow();
-            x.status.textContent = statusText || 'Ersten Bericht nachspionieren';
+            x.status.textContent = statusText || 'Ersten Bericht ab 30 Minuten nachspionieren';
         } else if (mode === 'waiting') {
             x.icon.textContent = '⏳';
             x.label.textContent = 'WARTE AUF VERSAND';
@@ -218,7 +337,7 @@
             x.icon.textContent = '⚠';
             x.label.textContent = 'ERNEUT VERSUCHEN';
             x.button.disabled = false;
-            x.status.textContent = statusText || 'Versand fehlgeschlagen';
+            x.status.textContent = statusText || 'Aktion fehlgeschlagen';
         }
     }
 
@@ -226,30 +345,69 @@
         makeUi();
 
         const x = ui();
-        const row = firstSpyRow();
+        const rows = allSpyRows();
 
-        // Die Box nur dort zeigen, wo AGR-Spionageaktionen vorhanden sind.
-        x.box.style.display = row ? 'block' : 'none';
+        // Box nur zeigen, wenn AGR-Spionageberichte vorhanden sind.
+        x.box.style.display = rows.length ? 'block' : 'none';
 
-        if (!row) {
+        if (!rows.length) {
             State.currentRowId = null;
+            State.currentCoords = null;
             State.currentTarget = null;
             return;
         }
 
-        // Während "waiting" oder "delete" bleibt die Anzeige auf dem Bericht,
-        // für den tatsächlich spioniert wurde.
-        if (State.mode === 'waiting' || State.mode === 'delete') return;
+        // Sobald ein Bericht "gelockt" wurde, bleibt die Anzeige auf genau diesem.
+        // Ein anderer Bericht kann in dieser Zeit problemlos die 30-Minuten-Grenze überschreiten.
+        if (State.mode === 'waiting' || State.mode === 'delete') {
+            return;
+        }
 
-        const info = rowInfo(row);
+        const candidate = getCandidateInfo();
+
+        if (!candidate.row) {
+            State.currentRowId = null;
+            State.currentCoords = null;
+            State.currentTarget = null;
+
+            x.target.innerHTML = `<strong>Kein Bericht ≥ 30 Min.</strong>`;
+            x.button.disabled = true;
+            x.status.textContent = 'Jüngere Berichte bleiben unangetastet';
+            x.skip.textContent = buildSkipText(candidate);
+            return;
+        }
+
+        const info = rowInfo(candidate.row);
         State.currentRowId = info.id;
+        State.currentCoords = info.coords;
         State.currentTarget = info;
 
-        x.target.innerHTML = `<strong>${escapeHtml(info.coords)}</strong><br>${escapeHtml(info.player)}`;
+        x.target.innerHTML = `
+            <strong>${escapeHtml(info.coords)}</strong><br>
+            ${escapeHtml(info.player)}<br>
+            <span class="oso-age">Alter: ${escapeHtml(formatAge(info.ageSeconds))}</span>
+        `;
+
+        x.skip.textContent = buildSkipText(candidate);
 
         if (State.mode === 'scan') {
             x.button.disabled = false;
+            x.status.textContent = 'Bereit zum Nachspionieren';
         }
+    }
+
+    function buildSkipText(candidate) {
+        const parts = [];
+
+        if (candidate.skippedYoung > 0) {
+            parts.push(`${candidate.skippedYoung} Bericht${candidate.skippedYoung === 1 ? '' : 'e'} < 30 Min. übersprungen`);
+        }
+
+        if (candidate.skippedUnknown > 0) {
+            parts.push(`${candidate.skippedUnknown} Bericht${candidate.skippedUnknown === 1 ? '' : 'e'} ohne erkennbare Zeit übersprungen`);
+        }
+
+        return parts.join(' · ');
     }
 
     function escapeHtml(s) {
@@ -261,6 +419,10 @@
             .replaceAll("'", '&#039;');
     }
 
+    // ------------------------------------------------------------
+    // Hauptaktion
+    // ------------------------------------------------------------
+
     function handleMainClick() {
         if (State.mode === 'scan' || State.mode === 'error') {
             startSpy();
@@ -270,39 +432,53 @@
     }
 
     function startSpy() {
-        const row = firstSpyRow();
-        if (!row) {
-            setMode('scan', 'Kein Spionagebericht gefunden');
+        // Kandidat genau im Klickmoment neu bestimmen.
+        // Dadurch gilt >= 30:00 exakt zum Zeitpunkt der Aktion.
+        const candidate = getCandidateInfo();
+
+        if (!candidate.row) {
+            setMode('scan', 'Kein Bericht mit mindestens 30 Minuten Alter');
+            refreshTarget();
             return;
         }
 
+        const row = candidate.row;
         const eye = row.querySelector(CFG.eyeSelector);
+
         if (!eye) {
             setMode('error', 'AGR-Spionageaktion nicht gefunden');
             return;
         }
 
         const info = rowInfo(row);
+
+        // LOCK:
+        // Ab diesem Punkt sind ID + Koordinaten fest an diesen Vorgang gebunden.
+        // Selbst wenn andere Berichte danach >= 30 Minuten werden, ändert sich nichts.
         State.currentRowId = info.id;
+        State.currentCoords = info.coords;
         State.currentTarget = info;
 
         const x = ui();
-        x.target.innerHTML = `<strong>${escapeHtml(info.coords)}</strong><br>${escapeHtml(info.player)}`;
+        x.target.innerHTML = `
+            <strong>${escapeHtml(info.coords)}</strong><br>
+            ${escapeHtml(info.player)}<br>
+            <span class="oso-age">Alter beim Scan: ${escapeHtml(formatAge(info.ageSeconds))}</span>
+        `;
+        x.skip.textContent = 'Bericht für diesen Vorgang gesperrt';
 
         State.pendingSpyRequest = true;
         setMode('waiting');
 
-        // Wichtig: Wir klicken AGRs vorhandene Aktion.
-        // AGR selbst ruft sendShipsWithPopup(...) auf.
+        // AGRs vorhandene Spionageaktion verwenden.
         eye.click();
 
-        // Falls kein AJAX-Call kommt, nicht ewig hängenbleiben.
         window.setTimeout(() => {
             if (State.mode === 'waiting' && State.pendingSpyRequest) {
                 State.pendingSpyRequest = false;
                 setMode('error', 'Keine Versandantwort erkannt');
             }
-        }, 7000);
+        }, CFG.spyResponseTimeoutMs);
     }
 
     function handleSpyAjaxResponse(payload) {
@@ -311,6 +487,7 @@
         State.pendingSpyRequest = false;
 
         const response = payload?.response;
+
         if (!response) {
             setMode('error', 'Unbekannte Antwort vom Flottenversand');
             return;
@@ -318,20 +495,44 @@
 
         if (response.success === true) {
             const coords = response.coordinates
-                ? ` (${response.coordinates.galaxy}:${response.coordinates.system}:${response.coordinates.position})`
-                : '';
+                ? `${response.coordinates.galaxy}:${response.coordinates.system}:${response.coordinates.position}`
+                : null;
 
-            setMode('delete', `Versand erfolgreich${coords}`);
+            // Zusätzliche Sicherheitsprüfung:
+            // Wenn OGame Koordinaten zurückliefert, müssen sie zum gelockten Bericht passen.
+            if (coords && State.currentCoords && coords !== State.currentCoords) {
+                setMode(
+                    'error',
+                    `Sicherheitsstopp: Versandziel ${coords} ≠ Bericht ${State.currentCoords}`
+                );
+                return;
+            }
+
+            setMode(
+                'delete',
+                `Versand erfolgreich${coords ? ` (${coords})` : ''}`
+            );
             return;
         }
 
-        setMode('error', response.message || 'Spionagesonden konnten nicht entsandt werden');
+        setMode(
+            'error',
+            response.message || 'Spionagesonden konnten nicht entsandt werden'
+        );
 
         clearTimeout(State.lastErrorTimer);
         State.lastErrorTimer = setTimeout(() => {
-            if (State.mode === 'error') setMode('scan');
+            if (State.mode === 'error') {
+                clearCurrentLock();
+                setMode('scan');
+                refreshTarget();
+            }
         }, 2500);
     }
+
+    // ------------------------------------------------------------
+    // AJAX-Antwort des AGR/OGame-miniFleet-Aufrufs überwachen
+    // ------------------------------------------------------------
 
     function patchAjax() {
         if (State.ajaxPatched) return true;
@@ -351,7 +552,6 @@
                 url = options.url || null;
             }
 
-            // Nur den nächsten von unserem Button ausgelösten miniFleet-Request beobachten.
             if (
                 State.pendingSpyRequest &&
                 url &&
@@ -359,6 +559,7 @@
                 String(url) === String(w.miniFleetLink)
             ) {
                 const originalSuccess = options.success;
+
                 const wrappedOptions = {
                     ...options,
                     success: function (data, textStatus, jqXHR) {
@@ -379,6 +580,7 @@
                 if (typeof args[0] === 'string') {
                     return originalAjax.call(this, args[0], wrappedOptions);
                 }
+
                 return originalAjax.call(this, wrappedOptions);
             }
 
@@ -390,35 +592,60 @@
         return true;
     }
 
+    // ------------------------------------------------------------
+    // Löschen mit ID + Koordinaten-Sicherheitsprüfung
+    // ------------------------------------------------------------
+
     function deleteCurrentReport() {
-        if (!State.currentRowId) {
-            setMode('scan');
+        if (!State.currentRowId || !State.currentCoords) {
+            clearCurrentLock();
+            setMode('scan', 'Kein gesperrter Bericht vorhanden');
             refreshTarget();
             return;
         }
 
         const row = document.getElementById(State.currentRowId);
 
-        // Sicherheit: Es wird exakt der Bericht gelöscht, für den zuvor
-        // der erfolgreiche Spionageversand bestätigt wurde.
         if (!row) {
+            clearCurrentLock();
             setMode('scan', 'Bericht bereits entfernt');
             refreshTarget();
             return;
         }
 
+        const currentInfo = rowInfo(row);
+
+        // Doppelte Absicherung:
+        // 1. dieselbe eindeutige Row-ID
+        // 2. dieselben Koordinaten wie beim Spionieren
+        if (!currentInfo || currentInfo.id !== State.currentRowId) {
+            setMode('error', 'Sicherheitsstopp: Bericht-ID stimmt nicht mehr');
+            return;
+        }
+
+        if (currentInfo.coords !== State.currentCoords) {
+            setMode(
+                'error',
+                `Sicherheitsstopp: Bericht zeigt jetzt ${currentInfo.coords} statt ${State.currentCoords}`
+            );
+            return;
+        }
+
         const del = row.querySelector(CFG.deleteSelector);
+
         if (!del) {
             setMode('error', 'Löschen-Aktion nicht gefunden');
             return;
         }
 
         const oldRowId = State.currentRowId;
+
         const x = ui();
         x.button.disabled = true;
         x.icon.textContent = '⏳';
         x.label.textContent = 'WIRD GELÖSCHT';
-        x.status.textContent = 'Warte auf AGR …';
+        x.status.textContent = `Lösche sicher ${State.currentCoords} …`;
+        x.skip.textContent = 'ID + Koordinaten geprüft';
 
         del.click();
 
@@ -442,9 +669,8 @@
                 State.deleteWatcher = null;
             }
 
-            State.currentRowId = null;
-            State.currentTarget = null;
-            setMode('scan', 'Nächster Bericht bereit');
+            clearCurrentLock();
+            setMode('scan', 'Nächster geeigneter Bericht bereit');
             refreshTarget();
         };
 
@@ -454,12 +680,14 @@
         }
 
         State.deleteWatcher = new MutationObserver(() => {
-            if (!document.getElementById(rowId)) finish();
+            if (!document.getElementById(rowId)) {
+                finish();
+            }
         });
 
         State.deleteWatcher.observe(document.body, {
             childList: true,
-            subtree: true
+            subtree: true,
         });
 
         setTimeout(() => {
@@ -475,17 +703,30 @@
         }, CFG.deleteTimeoutMs);
     }
 
+    function clearCurrentLock() {
+        State.currentRowId = null;
+        State.currentCoords = null;
+        State.currentTarget = null;
+        State.pendingSpyRequest = false;
+    }
+
+    // ------------------------------------------------------------
+    // Start
+    // ------------------------------------------------------------
+
     function init() {
         makeUi();
 
         const ajaxTimer = setInterval(() => {
-            if (patchAjax()) clearInterval(ajaxTimer);
+            if (patchAjax()) {
+                clearInterval(ajaxTimer);
+            }
         }, CFG.ajaxPatchRetryMs);
 
         setInterval(refreshTarget, CFG.scanIntervalMs);
         refreshTarget();
 
-        console.log('[Spy One-Button] v0.1.0 geladen.');
+        console.log('[Spy One-Button] v0.2.0 geladen. Mindestalter: 30 Minuten.');
     }
 
     init();
