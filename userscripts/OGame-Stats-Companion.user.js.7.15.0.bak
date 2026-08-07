@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         OGame Stats Companion
 // @namespace    https://github.com/XellDincht/ogame-stats
-// @version      7.16.0
-// @description  Bereinigter OGame Companion mit Spieler-Snapshot, Supabase-Sync, Kampfberichte, Transport-Notiz und Rechnern.
+// @version      7.15.0
+// @description  Empire-Collector mit Supabase-Sync für Account, Kampfberichte und Transport-Notiz.
 // @match        https://s282-de.ogame.gameforge.com/game/index.php*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setClipboard
@@ -31,6 +31,8 @@
   // ausschließlich den Empire-Snapshot und die lokale Bridge.
 
   const BACKGROUND_TEST_STORAGE_KEY = "oasBackgroundCollectorTestV620";
+  const ACCOUNT_SNAPSHOTS_STORAGE_KEY = "oasAccountSnapshotsV530";
+  const MAX_LOCAL_SNAPSHOTS = 31;
   const BACKGROUND_COMPONENTS = [
     { id: "overview", label: "Übersicht / Planetendaten", hints: ["Übersicht", "Durchmesser", "Metall"] },
     { id: "resourcesettings", label: "Ressourceneinstellungen / Produktion", hints: ["Ressourceneinstellungen", "Produktion", "Metall"] },
@@ -53,9 +55,39 @@
     new Promise(resolve => window.setTimeout(resolve, milliseconds));
 
 
+  function loadLocalSnapshots() {
+    try {
+      const value = JSON.parse(
+        localStorage.getItem(ACCOUNT_SNAPSHOTS_STORAGE_KEY) || "[]"
+      );
+      return Array.isArray(value) ? value : [];
+    } catch (_) {
+      return [];
+    }
+  }
 
+  function saveLocalSnapshots(snapshots) {
+    localStorage.setItem(
+      ACCOUNT_SNAPSHOTS_STORAGE_KEY,
+      JSON.stringify(snapshots.slice(0, MAX_LOCAL_SNAPSHOTS))
+    );
+  }
 
+  function storeAtomicSnapshot(snapshot) {
+    const snapshots = loadLocalSnapshots()
+      .filter(item => item?.snapshot_id !== snapshot.snapshot_id);
 
+    snapshots.unshift(snapshot);
+    saveLocalSnapshots(snapshots);
+    return snapshots;
+  }
+
+  function deleteLocalSnapshot(snapshotId) {
+    const snapshots = loadLocalSnapshots()
+      .filter(item => item?.snapshot_id !== snapshotId);
+    saveLocalSnapshots(snapshots);
+    updateCleanCompanionUi();
+  }
 
   function technologyNumber(value) {
     if (value === null || value === undefined || value === "") return null;
@@ -347,7 +379,7 @@
     return {
       format: "ogame-account-snapshot-v1",
       schema_version: 1,
-      collector_version: "7.16.0",
+      collector_version: "7.8.0",
       snapshot_id:
         `${result.universe || location.host}:` +
         `${result.player_id || "unknown"}:` +
@@ -392,6 +424,30 @@
     };
   }
 
+  function exportSnapshotJson(snapshotId) {
+    const snapshot = loadLocalSnapshots()
+      .find(item => item.snapshot_id === snapshotId);
+    if (!snapshot) {
+      showCollectorSnackbar("Snapshot nicht gefunden.", "error");
+      return;
+    }
+
+    const blob = new Blob(
+      [JSON.stringify(snapshot, null, 2)],
+      { type: "application/json;charset=utf-8" }
+    );
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    const safeDate = String(snapshot.created_at || "")
+      .replace(/[:.]/g, "-");
+    anchor.href = url;
+    anchor.download =
+      `ogame-snapshot-${snapshot.player?.name || "account"}-${safeDate}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
 
   function saveBackgroundTest(result) {
     localStorage.setItem(
@@ -569,6 +625,8 @@
   const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_8tHaQcq3UDTHiG3o2J996w_s1k4SgM_";
   const SUPABASE_UPLOAD_URL = `${SUPABASE_URL}/functions/v1/upload-ogame-account`;
   const SUPABASE_SESSION_KEY = "oasSupabaseSessionV1";
+  const AUTO_SNAPSHOT_DATE_KEY = "ogameCompanionAutoSnapshotDateV1";
+  const AUTO_SNAPSHOT_DELAY_MS = 12000;
 
   function loadSupabaseSession() {
     try {
@@ -724,6 +782,13 @@
     return `${year}-${month}-${day}`;
   }
 
+  function hasSnapshotForToday() {
+    const today = localDateKey();
+    if (localStorage.getItem(AUTO_SNAPSHOT_DATE_KEY) === today) return true;
+    return loadLocalSnapshots().some(item =>
+      item?.complete === true && localDateKey(new Date(item.created_at)) === today
+    );
+  }
 
   function parseLocalizedInteger(value) {
     if (value === null || value === undefined) return null;
@@ -1854,7 +1919,7 @@
     const research = new Map();
     planets.forEach(planet => planet.research.forEach(tech => { const old = research.get(tech.id); if (!old || tech.value > old.value) research.set(tech.id, tech); }));
     const snapshot = {
-      format: "ogame-account-snapshot-v1", schema_version: 1, collector_version: "7.16.0",
+      format: "ogame-account-snapshot-v1", schema_version: 1, collector_version: "7.8.0",
       snapshot_id: `${metaFromDocument(document,"ogame-universe") || location.host}:${metaFromDocument(document,"ogame-player-id") || "unknown"}:${finishedAt}`,
       created_at: finishedAt, collection_started_at: startedAt, collection_finished_at: finishedAt,
       player: { id: metaFromDocument(document,"ogame-player-id") || null, name: metaFromDocument(document,"ogame-player-name") || null },
@@ -1902,7 +1967,7 @@
       snapshot,
       diagnostics: {
         format:"ogame-empire-collector-v1",
-        version:"7.16.0",
+        version:"7.13.0",
         started_at:startedAt,
         finished_at:finishedAt,
         status: snapshot.summary.missing_modules.length ? "INCOMPLETE" : "COMPLETE",
@@ -1925,7 +1990,7 @@
   async function runBackgroundCollectorTest() {
     if (backgroundCollectorRunning) return;
     const startButton = document.querySelector("#oas-bg-start");
-    const visibleStartButton = document.querySelector("#oas-player-snapshot");
+    const visibleStartButton = document.querySelector("#oas-snapshot-now");
     const progressText = document.querySelector("#oas-bg-progress");
     backgroundCollectorRunning = true;
     if (startButton) startButton.disabled = true;
@@ -1936,28 +2001,31 @@
       const { snapshot, diagnostics } = await collectEmpireSnapshot();
       setCleanSnapshotProgress(1, "Empire-Daten empfangen");
       saveBackgroundTest(diagnostics);
-      setCleanSnapshotProgress(2, "Spieler-Snapshot erstellt");
-      let finalUploadDetail = "Supabase-Upload noch nicht abgeschlossen";
+      storeAtomicSnapshot(snapshot);
+      setCleanSnapshotProgress(2, "Snapshot lokal gespeichert");
+      let finalUploadDetail = "Lokal gespeichert; Supabase-Upload fehlgeschlagen";
       try {
         const upload = await uploadSnapshotToSupabase(snapshot);
         snapshot.upload_status = upload.status === "already_exists" ? "ALREADY_STORED" : "STORED_IN_SUPABASE";
         snapshot.uploaded_at = new Date().toISOString();
+        localStorage.setItem(AUTO_SNAPSHOT_DATE_KEY, localDateKey());
         finalUploadDetail = upload.status === "already_exists"
           ? "Snapshot war bereits in Supabase gespeichert"
           : `In Supabase gespeichert · ${upload.objects || 0} Objekte · ${upload.technologies || 0} Werte`;
       } catch (uploadError) {
         snapshot.upload_status = "LOCAL_ONLY";
         snapshot.uploaded_at = null;
-        console.warn("[OGame Companion] Supabase-Upload fehlgeschlagen; Spieler-Snapshot wurde nicht gespeichert:", uploadError);
+        console.warn("[OGame Companion] Supabase-Upload fehlgeschlagen; Snapshot bleibt lokal:", uploadError);
         showCollectorSnackbar(`Supabase-Upload fehlgeschlagen: ${uploadError.message}`, "error");
       }
+      storeAtomicSnapshot(snapshot);
       updateBackgroundCollectorUi(diagnostics);
       updateCleanCompanionUi();
       // updateCleanCompanionUi setzt den allgemeinen Status neu. Deshalb die
       // konkrete Upload-Antwort anschließend noch einmal sichtbar setzen.
       setCleanSnapshotProgress(3, finalUploadDetail);
       if (progressText) progressText.textContent = `${snapshot.summary.planet_count} Planeten und ${snapshot.summary.moon_count || 0} Monde erfasst`;
-      showCollectorSnackbar(`Spieler-Snapshot verarbeitet: ${snapshot.summary.planet_count} Planeten, ${snapshot.summary.moon_count || 0} Monde, ${snapshot.summary.technology_records} Werte.`, "success", [{ label: "Log kopieren", run: copyBackgroundCollectorLog }]);
+      showCollectorSnackbar(`Empire-Snapshot gespeichert: ${snapshot.summary.planet_count} Planeten, ${snapshot.summary.moon_count || 0} Monde, ${snapshot.summary.technology_records} Werte.`, "success", [{ label: "Log kopieren", run: copyBackgroundCollectorLog }]);
     } catch (error) {
       const result = { format:"ogame-empire-collector-v1", version:"7.5.0", player_id:metaFromDocument(document,"ogame-player-id"), player_name:metaFromDocument(document,"ogame-player-name"), universe:metaFromDocument(document,"ogame-universe")||location.host, started_at:new Date().toISOString(), finished_at:new Date().toISOString(), status:"ERROR", bodies:[], general_errors:[error.stack||error.message||String(error)] };
       saveBackgroundTest(result); updateBackgroundCollectorUi(result); updateCleanCompanionUi();
@@ -2126,7 +2194,7 @@
         "success"
       );
       showCollectorSnackbar(
-        `Optimizer-Daten aktualisiert: ${snapshot.summary?.planet_count || 0} Planeten. Es wurde kein Spieler-Snapshot gespeichert.`,
+        `Optimizer-Daten aktualisiert: ${snapshot.summary?.planet_count || 0} Planeten. Es wurde kein Tages-Snapshot gespeichert.`,
         "success"
       );
     } catch (error) {
@@ -2168,48 +2236,6 @@
     window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
   }
 
-
-  function setPlayerSnapshotHeaderState(state = "idle") {
-    const button = document.querySelector("#oas-player-snapshot");
-    if (!button) return;
-
-    const states = {
-      idle: { icon: "↻", title: "Spieler-Snapshot erstellen", disabled: false },
-      running: { icon: "⏳", title: "Spieler-Snapshot wird erstellt …", disabled: true },
-      success: { icon: "✓", title: "Spieler-Snapshot erfolgreich", disabled: false },
-      error: { icon: "!", title: "Spieler-Snapshot fehlgeschlagen", disabled: false }
-    };
-
-    const value = states[state] || states.idle;
-    button.textContent = value.icon;
-    button.title = value.title;
-    button.setAttribute("aria-label", value.title);
-    button.disabled = value.disabled;
-  }
-
-  async function runPlayerSnapshotFromHeader() {
-    if (backgroundCollectorRunning) return;
-
-    setPlayerSnapshotHeaderState("running");
-    const before = loadBackgroundTest()?.finished_at || null;
-
-    try {
-      await runCleanSnapshot();
-      const result = loadBackgroundTest();
-      const successful =
-        result?.finished_at &&
-        result.finished_at !== before &&
-        result.status !== "ERROR";
-
-      setPlayerSnapshotHeaderState(successful ? "success" : "error");
-      updateCleanCompanionUi();
-      window.setTimeout(() => setPlayerSnapshotHeaderState("idle"), 1800);
-    } catch (error) {
-      console.error("[OGame Companion] Spieler-Snapshot fehlgeschlagen", error);
-      setPlayerSnapshotHeaderState("error");
-      window.setTimeout(() => setPlayerSnapshotHeaderState("idle"), 2500);
-    }
-  }
 
   function openDashboard() {
     if (typeof GM_openInTab === "function") {
@@ -2349,63 +2375,148 @@
     });
   }
 
+  function nextDailySnapshotText() {
+    const now = new Date();
+    const next = new Date(now);
+    next.setHours(6, 30, 0, 0);
+    if (next <= now) next.setDate(next.getDate() + 1);
+    return next.toLocaleString("de-DE", {
+      weekday: "short",
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  }
 
 
+  function renderLocalSnapshotManager() {
+    const host = document.querySelector("#oas-local-snapshots");
+    if (!host) return;
+
+    const snapshots = loadLocalSnapshots();
+    host.innerHTML = "";
+
+    if (!snapshots.length) {
+      host.innerHTML = '<div class="oas-muted">Noch keine lokalen Snapshots.</div>';
+      return;
+    }
+
+    for (const snapshot of snapshots.slice(0, 8)) {
+      const item = document.createElement("div");
+      item.className = "oas-snapshot-item";
+
+      const missingCount =
+        snapshot.summary?.missing_modules?.length || 0;
+      const parserOpen =
+        snapshot.summary?.parser_open_modules?.length || 0;
+
+      item.innerHTML = `
+        <div class="oas-snapshot-item-head">
+          <strong>${formatSnapshotDate(snapshot.created_at)}</strong>
+          <span class="oas-status-pill ${snapshot.complete ? "" : "oas-pill-warning"}">
+            ${snapshot.complete ? "COMPLETE" : `FEHLT ${missingCount}`}
+          </span>
+        </div>
+        <div class="oas-muted">
+          ${snapshot.summary?.planet_count || 0} Planeten ·
+          ${snapshot.summary?.moon_count || 0} Monde ·
+          ${snapshot.summary?.technology_records || 0} Datensätze ·
+          Parser offen ${parserOpen}
+        </div>
+        <div class="oas-snapshot-item-actions">
+          <button type="button" data-export="${snapshot.snapshot_id}">JSON exportieren</button>
+          <button type="button" data-delete="${snapshot.snapshot_id}">Löschen</button>
+        </div>
+      `;
+      host.appendChild(item);
+    }
+
+    host.querySelectorAll("[data-export]").forEach(button => {
+      button.addEventListener("click", () =>
+        exportSnapshotJson(button.dataset.export)
+      );
+    });
+
+    host.querySelectorAll("[data-delete]").forEach(button => {
+      button.addEventListener("click", () =>
+        deleteLocalSnapshot(button.dataset.delete)
+      );
+    });
+  }
 
   function updateCleanCompanionUi() {
     const result = loadBackgroundTest();
-
-    const playerName =
-      metaFromDocument(document, "ogame-player-name") ||
-      result?.player_name ||
-      "Unbekannt";
-    const playerId =
-      metaFromDocument(document, "ogame-player-id") ||
-      result?.player_id ||
-      "–";
-    const universe =
-      metaFromDocument(document, "ogame-universe") ||
-      result?.universe ||
-      location.host;
-
-    const nameNode = document.querySelector("#oas-player-name");
-    const idNode = document.querySelector("#oas-player-id");
-    const universeNode = document.querySelector("#oas-player-universe");
-    const lastNode = document.querySelector("#oas-player-last-snapshot");
-    const stateNode = document.querySelector("#oas-player-snapshot-state");
-    const logNode = document.querySelector("#oas-diagnostic-log");
+    const localSnapshots = loadLocalSnapshots();
+    const latestSnapshot = localSnapshots[0] || null;
+    const status = document.querySelector("#oas-snapshot-state");
+    const last = document.querySelector("#oas-last-snapshot");
+    const next = document.querySelector("#oas-next-snapshot");
+    const progress = document.querySelector("#oas-snapshot-progress");
+    const detail = document.querySelector("#oas-snapshot-detail");
     const copyButton = document.querySelector("#oas-diagnostic-copy");
+    const log = document.querySelector("#oas-diagnostic-log");
 
-    if (nameNode) nameNode.textContent = playerName;
-    if (idNode) idNode.textContent = String(playerId);
-    if (universeNode) universeNode.textContent = String(universe);
-    if (lastNode) {
-      lastNode.textContent = result?.finished_at
-        ? formatSnapshotDate(result.finished_at)
-        : "Noch keiner";
+    if (next) next.textContent = nextDailySnapshotText();
+
+    if (!result) {
+      if (status) {
+        status.textContent = "Bereit";
+        status.dataset.kind = "idle";
+      }
+      if (last) {
+        last.textContent = latestSnapshot
+          ? formatSnapshotDate(latestSnapshot.created_at)
+          : "Noch keiner";
+      }
+      if (progress) { progress.max = 3; progress.value = 0; }
+      if (detail) detail.textContent = "Noch kein Snapshot ausgeführt.";
+      if (copyButton) copyButton.disabled = true;
+      if (log) log.value = "";
+      renderLocalSnapshotManager();
+      return;
     }
 
-    if (stateNode) {
+    const requests = result.bodies?.flatMap(body => body.results || []) || [];
+    const isEmpireRun = result.format === "ogame-empire-collector-v1";
+    const total = isEmpireRun ? 3 : Math.max(requests.length, (result.bodies?.length || 0) * BACKGROUND_COMPONENTS.length);
+    const finished = isEmpireRun ? (result.status === "COMPLETE" ? 3 : 0) : requests.filter(item => item.ok).length;
+    const parserReady = requests.filter(item => item.parser_ok).length;
+
+    if (last) {
+      last.textContent = formatSnapshotDate(
+        result.finished_at || result.started_at
+      );
+    }
+    if (progress) { progress.max = total || 3; progress.value = finished; }
+    if (copyButton) copyButton.disabled = requests.length === 0;
+
+    if (status) {
       const labels = {
-        RUNNING: "läuft",
-        COMPLETE: "erfolgreich",
-        INCOMPLETE: "unvollständig",
-        ERROR: "fehlgeschlagen"
+        RUNNING: "Snapshot läuft",
+        COMPLETE: "Abruf vollständig",
+        INCOMPLETE: "Snapshot unvollständig",
+        ERROR: "Snapshot fehlgeschlagen"
       };
-      stateNode.textContent = result
-        ? (labels[result.status] || result.status || "Unbekannt")
-        : "Bereit";
-      stateNode.dataset.kind =
-        result?.status === "COMPLETE" ? "success" :
-        result?.status === "RUNNING" ? "running" :
-        result?.status ? "error" : "idle";
+      status.textContent = labels[result.status] || result.status || "Unbekannt";
+      status.dataset.kind =
+        result.status === "COMPLETE" ? "success" :
+        result.status === "RUNNING" ? "running" :
+        "error";
     }
 
-    if (result) updateBackgroundCollectorUi(result);
+    if (detail) {
+      detail.textContent = isEmpireRun
+        ? `${finished}/${total} Schritte · ${result.bodies?.filter(body => body.type !== "moon").length || 0} Planeten · ${result.bodies?.filter(body => body.type === "moon").length || 0} Monde`
+        : `${result.bodies?.length || 0} Planeten · ${finished}/${total} Abrufe · Parser ${parserReady}/${requests.length}`;
+    }
 
-    const hiddenLog = document.querySelector("#oas-bg-log");
-    if (logNode) logNode.value = hiddenLog?.value || "";
-    if (copyButton) copyButton.disabled = !logNode?.value?.trim();
+    updateBackgroundCollectorUi(result);
+    if (log) {
+      const oldLog = document.querySelector("#oas-bg-log");
+      if (oldLog && oldLog !== log) log.value = oldLog.value;
+    }
+    renderLocalSnapshotManager();
   }
 
   async function runCleanSnapshot() {
@@ -2413,6 +2524,20 @@
     updateCleanCompanionUi();
   }
 
+  async function runDailySnapshotAutomatically() {
+    if (hasSnapshotForToday() || backgroundCollectorRunning) return;
+    try {
+      await getValidSupabaseSession();
+    } catch (_) {
+      const detail = document.querySelector("#oas-snapshot-detail");
+      if (detail) detail.textContent = "Auto-Snapshot wartet: Bitte im Companion bei Supabase anmelden.";
+      return;
+    }
+    if (hasSnapshotForToday() || backgroundCollectorRunning) return;
+    const detail = document.querySelector("#oas-snapshot-detail");
+    if (detail) detail.textContent = "Auto-Snapshot wird gestartet …";
+    await runCleanSnapshot();
+  }
 
   function copyCleanDiagnosticLog() {
     const source = document.querySelector("#oas-bg-log");
@@ -2420,6 +2545,385 @@
     if (source?.value && visible) visible.value = source.value;
     copyBackgroundCollectorLog();
   }
+
+  const SPIO_STORAGE_KEY = "ogameCompanionSpioTargetsV1";
+  const SPIO_META_KEY = "ogameCompanionSpioMetaV1";
+
+  function spioLoadTargets() {
+    try { return JSON.parse(localStorage.getItem(SPIO_STORAGE_KEY) || "{}"); }
+    catch { return {}; }
+  }
+
+  function spioSaveTargets(targets) {
+    localStorage.setItem(SPIO_STORAGE_KEY, JSON.stringify(targets));
+    localStorage.setItem(SPIO_META_KEY, JSON.stringify({ updated_at: new Date().toISOString() }));
+  }
+
+  function spioNumber(value) {
+    const raw = String(value ?? "").replace(/[^\d.,-]/g, "").replace(/[.,](?=\d{3}(?:\D|$))/g, "").replace(",", ".");
+    const number = Number(raw);
+    return Number.isFinite(number) ? number : null;
+  }
+
+  function spioNormalizeLabel(value) {
+    return String(value || "").toLocaleLowerCase("de-DE").replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss").replace(/[^a-z0-9]/g, "");
+  }
+
+  const SPIO_FIELDS = {
+    buildings: {
+      metallmine: "Metallmine", kristallmine: "Kristallmine", deuteriumsynthetisierer: "Deuteriumsynthetisierer",
+      solarkraftwerk: "Solarkraftwerk", fusionskraftwerk: "Fusionskraftwerk", metallsspeicher: "Metallspeicher",
+      kristallspeicher: "Kristallspeicher", deuteriumtank: "Deuteriumtank", roboterfabrik: "Roboterfabrik",
+      nanitenfabrik: "Nanitenfabrik", raumschiffwerft: "Raumschiffwerft", forschungslabor: "Forschungslabor",
+      terraformerder: "Terraformer", allianzdepot: "Allianzdepot", raketensilo: "Raketensilo"
+    },
+    resources: { metall: "Metall", kristall: "Kristall", deuterium: "Deuterium", energie: "Energie" },
+    fleet: {
+      kleinertransporter:"Kleiner Transporter", grossertransporter:"Großer Transporter", leichterjaeger:"Leichter Jäger",
+      schwererjaeger:"Schwerer Jäger", kreuzer:"Kreuzer", schlachtschiff:"Schlachtschiff", kolonieschiff:"Kolonieschiff",
+      recycler:"Recycler", spionagesonde:"Spionagesonde", bomber:"Bomber", zerstoerer:"Zerstörer", todesstern:"Todesstern",
+      schlachtkreuzer:"Schlachtkreuzer", reaper:"Reaper", pathfinder:"Pathfinder"
+    },
+    defense: {
+      raketenwerfer:"Raketenwerfer", leichteslasergeschuetz:"Leichtes Lasergeschütz", schwereslasergeschuetz:"Schweres Lasergeschütz",
+      gausskanone:"Gaußkanone", ionengeschuetz:"Ionengeschütz", plasmawerfer:"Plasmawerfer", kleineschildkuppel:"Kleine Schildkuppel",
+      kleineschildkuppel:"Kleine Schildkuppel", grossesschildkuppel:"Große Schildkuppel", abfangrakete:"Abfangrakete", interplanetarrakete:"Interplanetarrakete"
+    },
+    research: {
+      spionagetechnik:"Spionagetechnik", computertechnik:"Computertechnik", waffentechnik:"Waffentechnik", schildtechnik:"Schildtechnik",
+      raumschiffpanzerung:"Raumschiffpanzerung", energietechnik:"Energietechnik", hyperraumtechnik:"Hyperraumtechnik",
+      verbrennungstriebwerk:"Verbrennungstriebwerk", impulstriebwerk:"Impulstriebwerk", hyperraumantrieb:"Hyperraumantrieb",
+      lasertechnik:"Lasertechnik", ionentechnik:"Ionentechnik", plasmatechnik:"Plasmatechnik", intergalaktischesforschungsnetzwerk:"Intergalaktisches Forschungsnetzwerk",
+      astrophysik:"Astrophysik", gravitonforschung:"Gravitonforschung"
+    }
+  };
+
+  function spioExtractCoordinates(text) {
+    const match = String(text || "").match(/(?:\[)?(\d{1,3}:\d{1,3}:\d{1,2})(?:\])?/);
+    return match ? match[1] : null;
+  }
+
+  function spioReadStatus(root, text) {
+    const classes = Array.from(root.querySelectorAll("[class]")).map(node => node.className).join(" ").toLowerCase();
+    const source = `${classes} ${text}`.toLowerCase();
+    if (/status_abbr_longinactive|longinactive|\(iI\)|\(ii\)/i.test(source)) return "long_inactive";
+    if (/status_abbr_inactive|inactive|\(i\)/i.test(source)) return "inactive";
+    if (/vacation|urlaubsmodus|\(u\)|status_abbr_vacation/i.test(source)) return "vacation";
+    if (/banned|gesperrt|status_abbr_banned/i.test(source)) return "banned";
+    if (/outlaw|geaechtet|geächtet/i.test(source)) return "outlaw";
+    return "active";
+  }
+
+  function spioParseDate(root, text) {
+    const timeNode = root.querySelector("time[datetime]");
+    if (timeNode?.dateTime) return new Date(timeNode.dateTime).toISOString();
+    const dataTime = root.querySelector("[data-timestamp]")?.dataset?.timestamp;
+    if (dataTime && Number(dataTime)) return new Date(Number(dataTime) * 1000).toISOString();
+    const match = text.match(/(\d{1,2}\.\d{1,2}\.\d{2,4})\s+(\d{1,2}:\d{2}(?::\d{2})?)/);
+    if (match) {
+      const [d,m,y] = match[1].split(".").map(Number);
+      const [hh,mm,ss=0] = match[2].split(":").map(Number);
+      return new Date(y < 100 ? 2000+y : y, m-1, d, hh, mm, ss).toISOString();
+    }
+    return new Date().toISOString();
+  }
+
+  function spioParseNamedValues(root, sectionName) {
+    const defs = SPIO_FIELDS[sectionName];
+    const values = {};
+    const nodes = root.querySelectorAll("li, tr, .detail_list_el, .technology, .resource, .item, .compacting, div");
+    for (const node of nodes) {
+      const text = (node.innerText || node.textContent || "").replace(/\s+/g, " ").trim();
+      if (!text || text.length > 180) continue;
+      const normalized = spioNormalizeLabel(text);
+      for (const [key, label] of Object.entries(defs)) {
+        if (!normalized.includes(key)) continue;
+        const numberMatch = text.match(/(?:Stufe\s*)?([\d.]+)\s*$/i) || text.match(/([\d.]+)(?!.*\d)/);
+        const number = numberMatch ? spioNumber(numberMatch[1]) : null;
+        if (number !== null) values[label] = number;
+      }
+    }
+    return values;
+  }
+
+  function spioHasSection(text, section) {
+    const checks = {
+      resources: /rohstoffe|resources/i,
+      buildings: /gebaeude|gebäude|buildings/i,
+      research: /forschung|research/i,
+      fleet: /flotte|fleet/i,
+      defense: /verteidigung|defence|defense/i
+    };
+    return checks[section].test(text);
+  }
+
+  function spioParseReport(root, sourceUrl = location.href) {
+    const text = (root.innerText || root.textContent || "").replace(/\u00a0/g, " ");
+    const coordinates = spioExtractCoordinates(text) || spioExtractCoordinates(sourceUrl);
+    if (!coordinates) return null;
+
+    const playerNode = root.querySelector(".playername, .playerName, [data-player-name], .compacting.sender, .sender");
+    let playerName = playerNode?.dataset?.playerName || playerNode?.textContent?.trim() || "Unbekannt";
+    playerName = playerName.replace(/\[[^\]]+\]/g, "").replace(/Spionagebericht|Espionage report/ig, "").trim() || "Unbekannt";
+
+    const observedAt = spioParseDate(root, text);
+    const sections = {};
+    for (const name of ["resources", "buildings", "research", "fleet", "defense"]) {
+      const data = spioParseNamedValues(root, name);
+      if (Object.keys(data).length || spioHasSection(text, name)) {
+        sections[name] = { data, observed_at: observedAt };
+      }
+    }
+
+    return {
+      coordinates,
+      player_name: playerName,
+      status: spioReadStatus(root, text),
+      alliance: root.querySelector(".allytag, .alliance, [data-alliance]")?.textContent?.trim() || "",
+      observed_at: observedAt,
+      source_url: sourceUrl,
+      sections
+    };
+  }
+
+  function spioMergeReport(targets, report) {
+    const previous = targets[report.coordinates] || {
+      coordinates: report.coordinates,
+      first_seen: report.observed_at,
+      reports_count: 0,
+      sections: {},
+      history: []
+    };
+    const next = { ...previous };
+    next.player_name = report.player_name !== "Unbekannt" ? report.player_name : previous.player_name || "Unbekannt";
+    next.status = report.status || previous.status || "active";
+    next.alliance = report.alliance || previous.alliance || "";
+    next.last_seen = report.observed_at;
+    next.source_url = report.source_url;
+    next.reports_count = Number(previous.reports_count || 0) + 1;
+    next.sections = { ...(previous.sections || {}) };
+    for (const [name, section] of Object.entries(report.sections || {})) {
+      // Nur sichtbare Kategorien aktualisieren. Nicht sichtbare Kategorien bleiben unverändert erhalten.
+      next.sections[name] = section;
+    }
+    next.history = [...(previous.history || []), {
+      observed_at: report.observed_at,
+      visible_sections: Object.keys(report.sections || {})
+    }].slice(-50);
+    targets[report.coordinates] = next;
+  }
+
+  function spioReportCandidates(root = document) {
+    const candidates = new Set();
+    const selectors = [
+      ".espionageReport", ".espionage_report", ".detail_msg", ".message.espionage", ".msg.espionage",
+      "li[data-msg-type='10']", "[data-message-type='espionage']", "[class*='espionage']"
+    ];
+    selectors.forEach(selector => root.querySelectorAll(selector).forEach(node => candidates.add(node)));
+    // Fallback: Nachrichtenblöcke mit Koordinaten und Spionage-Text.
+    root.querySelectorAll("li, article, .message, .msg").forEach(node => {
+      const text = node.textContent || "";
+      if (/spionagebericht|espionage report/i.test(text) && spioExtractCoordinates(text)) candidates.add(node);
+    });
+    return Array.from(candidates);
+  }
+
+  function spioReportLinks() {
+    const links = new Set();
+    document.querySelectorAll("a[href]").forEach(anchor => {
+      const href = anchor.href;
+      const text = `${anchor.textContent || ""} ${anchor.className || ""} ${href}`;
+      if (/spionagebericht|espionage|showmessage|messageid|msg_id|report/i.test(text) && !href.startsWith("javascript:")) links.add(href);
+    });
+    return Array.from(links).slice(0, 500);
+  }
+
+  async function spioFetchDocument(url) {
+    const response = await fetch(url, { credentials: "include", headers: { "X-Requested-With": "XMLHttpRequest" } });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const html = await response.text();
+    return new DOMParser().parseFromString(html, "text/html");
+  }
+
+  async function spioUpdateReports() {
+    const button = document.querySelector("#oas-spio-update");
+    const state = document.querySelector("#oas-spio-state");
+    if (button) button.disabled = true;
+    if (state) state.textContent = "Suche Berichte …";
+
+    const targets = spioLoadTargets();
+    let parsed = 0, createdBefore = Object.keys(targets).length, errors = 0;
+    const seenSignatures = new Set();
+
+    const accept = report => {
+      if (!report) return;
+      const signature = `${report.coordinates}|${report.observed_at}|${Object.keys(report.sections || {}).join(",")}`;
+      if (seenSignatures.has(signature)) return;
+      seenSignatures.add(signature);
+      spioMergeReport(targets, report);
+      parsed += 1;
+    };
+
+    spioReportCandidates(document).forEach(node => accept(spioParseReport(node)));
+    const links = spioReportLinks();
+    for (let index = 0; index < links.length; index += 1) {
+      if (state) state.textContent = `Lese Bericht ${index + 1}/${links.length} …`;
+      try {
+        const doc = await spioFetchDocument(links[index]);
+        const roots = spioReportCandidates(doc);
+        if (roots.length) roots.forEach(root => accept(spioParseReport(root, links[index])));
+        else accept(spioParseReport(doc.body, links[index]));
+      } catch (error) {
+        errors += 1;
+        console.warn("[OGame Companion] Spionagebericht konnte nicht gelesen werden:", links[index], error);
+      }
+      await new Promise(resolve => setTimeout(resolve, 120));
+    }
+
+    spioSaveTargets(targets);
+    const total = Object.keys(targets).length;
+    const newTargets = Math.max(0, total - createdBefore);
+    if (state) state.textContent = `${total} Ziele · ${parsed} Berichte verarbeitet`;
+    if (button) button.disabled = false;
+    showMessage(`${parsed} Spionageberichte verarbeitet, ${newTargets} neue Ziele${errors ? `, ${errors} Links nicht lesbar` : ""}.`, errors ? "info" : "success");
+    spioRenderTable();
+  }
+
+  function spioMineValue(target) {
+    const b = target.sections?.buildings?.data || {};
+    return Number(b["Metallmine"] || 0) + Number(b["Kristallmine"] || 0) + Number(b["Deuteriumsynthetisierer"] || 0);
+  }
+
+  function spioTargetScore(target) {
+    const b = target.sections?.buildings?.data || {};
+    const r = target.sections?.resources?.data || {};
+    const fleet = target.sections?.fleet?.data || {};
+    const defense = target.sections?.defense?.data || {};
+    const mineScore = Number(b["Metallmine"] || 0) * 1.1 + Number(b["Kristallmine"] || 0) * 1.35 + Number(b["Deuteriumsynthetisierer"] || 0) * 1.55;
+    const resourceScore = (Number(r.Metall || 0) + Number(r.Kristall || 0) * 1.5 + Number(r.Deuterium || 0) * 2) / 100000;
+    const risk = (Object.values(fleet).reduce((a,v) => a + Number(v || 0), 0) + Object.values(defense).reduce((a,v) => a + Number(v || 0), 0)) / 500;
+    const ageDays = Math.max(0, (Date.now() - new Date(target.last_seen || 0).getTime()) / 86400000);
+    const agePenalty = Math.min(25, ageDays * 1.5);
+    return Math.round((mineScore + resourceScore - risk - agePenalty) * 10) / 10;
+  }
+
+  function spioAge(value) {
+    const time = new Date(value).getTime();
+    if (!Number.isFinite(time)) return "–";
+    const hours = Math.max(0, (Date.now() - time) / 3600000);
+    if (hours < 24) return `${Math.floor(hours)} h`;
+    return `${Math.floor(hours / 24)} T`;
+  }
+
+  function spioFormat(value) {
+    return Number(value || 0).toLocaleString("de-DE");
+  }
+
+  function spioStatusLabel(status) {
+    return ({ active:"aktiv", inactive:"inaktiv", long_inactive:"lange inaktiv", vacation:"Urlaub", banned:"gesperrt", outlaw:"geächtet" })[status] || status;
+  }
+
+  function spioOpenDatabase() {
+    let overlay = document.querySelector("#oas-spio-overlay");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "oas-spio-overlay";
+      overlay.innerHTML = `
+        <div class="oas-spio-window">
+          <header><div><h2>Lokale Spionage-Zieldatenbank</h2><small>Nur in diesem Browser gespeichert – keine Übertragung an GitHub.</small></div><button id="oas-spio-close">×</button></header>
+          <div class="oas-spio-toolbar">
+            <input id="oas-spio-search" placeholder="Spieler, Allianz oder Koordinaten">
+            <select id="oas-spio-status"><option value="">Alle Status</option><option value="active">Aktiv</option><option value="inactive">Inaktiv</option><option value="long_inactive">Lange inaktiv</option><option value="vacation">Urlaub</option></select>
+            <input id="oas-spio-mines" type="number" min="0" placeholder="Min. Minensumme">
+            <select id="oas-spio-sort"><option value="score">Bester Zielwert</option><option value="mines">Höchste Minensumme</option><option value="metal">Höchste Metallmine</option><option value="crystal">Höchste Kristallmine</option><option value="deut">Höchste Deutmine</option><option value="resources">Meiste Ressourcen</option><option value="recent">Neuester Bericht</option><option value="coords">Koordinaten</option></select>
+            <button id="oas-spio-export">JSON sichern</button><button id="oas-spio-import">JSON laden</button><input id="oas-spio-file" type="file" accept="application/json" hidden>
+          </div>
+          <div class="oas-spio-summary" id="oas-spio-summary"></div>
+          <div class="oas-spio-table-wrap"><table><thead><tr><th>Koordinaten</th><th>Spieler</th><th>Status</th><th>Minen M/K/D</th><th>Rohstoffe</th><th>Flotte</th><th>Def</th><th>Alter</th><th>Zielwert</th></tr></thead><tbody id="oas-spio-tbody"></tbody></table></div>
+        </div>`;
+      document.body.appendChild(overlay);
+      overlay.querySelector("#oas-spio-close").addEventListener("click", () => overlay.classList.remove("open"));
+      overlay.addEventListener("click", event => { if (event.target === overlay) overlay.classList.remove("open"); });
+      ["#oas-spio-search", "#oas-spio-status", "#oas-spio-mines", "#oas-spio-sort"].forEach(selector => overlay.querySelector(selector).addEventListener("input", spioRenderTable));
+      overlay.querySelector("#oas-spio-export").addEventListener("click", spioExportJson);
+      overlay.querySelector("#oas-spio-import").addEventListener("click", () => overlay.querySelector("#oas-spio-file").click());
+      overlay.querySelector("#oas-spio-file").addEventListener("change", spioImportJson);
+    }
+    overlay.classList.add("open");
+    spioRenderTable();
+  }
+
+  function spioRenderTable() {
+    const body = document.querySelector("#oas-spio-tbody");
+    if (!body) return;
+    const targets = Object.values(spioLoadTargets());
+    const search = (document.querySelector("#oas-spio-search")?.value || "").toLowerCase();
+    const status = document.querySelector("#oas-spio-status")?.value || "";
+    const minMines = Number(document.querySelector("#oas-spio-mines")?.value || 0);
+    const sort = document.querySelector("#oas-spio-sort")?.value || "score";
+    const filtered = targets.filter(target => {
+      const haystack = `${target.coordinates} ${target.player_name} ${target.alliance}`.toLowerCase();
+      return (!search || haystack.includes(search)) && (!status || target.status === status) && spioMineValue(target) >= minMines;
+    });
+    const sorters = {
+      score: target => spioTargetScore(target), mines: target => spioMineValue(target),
+      metal: target => Number(target.sections?.buildings?.data?.Metallmine || 0), crystal: target => Number(target.sections?.buildings?.data?.Kristallmine || 0),
+      deut: target => Number(target.sections?.buildings?.data?.Deuteriumsynthetisierer || 0),
+      resources: target => Object.values(target.sections?.resources?.data || {}).reduce((a,v) => a + Number(v || 0), 0),
+      recent: target => new Date(target.last_seen || 0).getTime(), coords: target => target.coordinates
+    };
+    filtered.sort((a,b) => sort === "coords" ? String(sorters.coords(a)).localeCompare(String(sorters.coords(b)), undefined, { numeric:true }) : sorters[sort](b) - sorters[sort](a));
+    body.innerHTML = filtered.map(target => {
+      const b = target.sections?.buildings?.data || {}, r = target.sections?.resources?.data || {};
+      const fleet = Object.values(target.sections?.fleet?.data || {}).reduce((a,v)=>a+Number(v||0),0);
+      const defense = Object.values(target.sections?.defense?.data || {}).reduce((a,v)=>a+Number(v||0),0);
+      const score = spioTargetScore(target);
+      return `<tr>
+        <td><strong>${target.coordinates}</strong><small>${target.reports_count || 0} Berichte</small></td>
+        <td class="oas-spio-player status-${target.status}">${target.player_name || "Unbekannt"}<small>${target.alliance || ""}</small></td>
+        <td>${spioStatusLabel(target.status)}</td>
+        <td>${b.Metallmine ?? "–"} / ${b.Kristallmine ?? "–"} / ${b.Deuteriumsynthetisierer ?? "–"}<small>Stand ${spioAge(target.sections?.buildings?.observed_at)}</small></td>
+        <td>${spioFormat(Number(r.Metall||0)+Number(r.Kristall||0)+Number(r.Deuterium||0))}<small>Stand ${spioAge(target.sections?.resources?.observed_at)}</small></td>
+        <td>${spioFormat(fleet)}<small>Stand ${spioAge(target.sections?.fleet?.observed_at)}</small></td>
+        <td>${spioFormat(defense)}<small>Stand ${spioAge(target.sections?.defense?.observed_at)}</small></td>
+        <td>${spioAge(target.last_seen)}</td><td><strong>${score}</strong></td>
+      </tr>`;
+    }).join("") || `<tr><td colspan="9" class="oas-spio-empty">Noch keine passenden Ziele gespeichert. Öffne die Nachrichten-/Spionageberichte und klicke im Companion auf „Berichte aktualisieren“.</td></tr>`;
+    const summary = document.querySelector("#oas-spio-summary");
+    if (summary) summary.textContent = `${filtered.length} von ${targets.length} Zielen angezeigt`;
+    const state = document.querySelector("#oas-spio-state");
+    if (state) state.textContent = `${targets.length} Ziele lokal`;
+  }
+
+  function spioExportJson() {
+    const payload = { schema_version: 1, exported_at: new Date().toISOString(), targets: spioLoadTargets() };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `ogame-spio-ziele-${new Date().toISOString().slice(0,10)}.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
+  async function spioImportJson(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      const incoming = parsed.targets || parsed;
+      const current = spioLoadTargets();
+      for (const target of Object.values(incoming)) {
+        if (!target?.coordinates) continue;
+        if (!current[target.coordinates] || new Date(target.last_seen || 0) > new Date(current[target.coordinates].last_seen || 0)) current[target.coordinates] = target;
+      }
+      spioSaveTargets(current);
+      spioRenderTable();
+      showMessage("Spionage-Zieldatenbank importiert.", "success");
+    } catch (error) { showMessage(`Import fehlgeschlagen: ${error.message}`, "error"); }
+    event.target.value = "";
+  }
+
+
 
   const COMBAT_STORAGE_KEY = "ogameCompanionCombatLootV2";
   const COMBAT_SHIP_BY_ID = {
@@ -2812,6 +3316,7 @@
     const summary=document.querySelector("#oas-combat-summary");
     if(summary) summary.innerHTML = combatKpiHtml("Heute · 00:00–24:00 Uhr", todayReports, today) + combatKpiHtml("Aktuell sichtbare Kampfberichte", reports, total);
     const body=document.querySelector("#oas-combat-tbody"); if(!body)return;
+    body.innerHTML=reports.sort((a,b)=>(Number(b.timestamp)||0)-(Number(a.timestamp)||0)).map(r=>`<tr class="${combatIsToday(r)?"oas-combat-today":""}"><td>${r.date||"–"}</td><td>${r.target?`${r.target} `:""}${r.coords?`[${r.coords}]`:"–"}</td><td>${r.role==="attacker"?"Angreifer":r.role==="defender"?"Verteidiger":"unklar"}</td><td>${fmt(r.loot?.metal)}</td><td>${fmt(r.loot?.crystal)}</td><td>${fmt(r.loot?.deuterium)}</td><td>${fmt(r.lost_resource_value)}</td><td>${Object.entries(r.ships||{}).map(([n,c])=>`${n}: ${fmt(c)}`).join("<br>")||"–"}</td></tr>`).join("")||`<tr><td colspan="8" class="oas-spio-empty">Noch keine aktuell sichtbaren Kampfberichte eingelesen. Öffne Nachrichten → Kampfberichte und klicke auf „Kampfberichte Loot einlesen“.</td></tr>`;
   }
 
 
@@ -3924,6 +4429,21 @@
       .oas-combat-window table { width:100%;border-collapse:collapse;min-width:1050px; } .oas-combat-window th { position:sticky;top:0;background:#35200e;color:#ffc574;text-align:left;padding:9px; }
       .oas-combat-window td { padding:9px;border-bottom:1px solid rgba(255,190,100,.12);vertical-align:top; }
       @media(max-width:900px){#oas-combat-overlay{padding:8px}.oas-combat-kpis{grid-template-columns:1fr 1fr}}
+      #oas-spio-overlay { position:fixed; inset:0; z-index:100000; display:none; padding:28px; background:rgba(0,0,0,.72); color:#eef7ff; font:13px/1.4 Arial,sans-serif; }
+      #oas-spio-overlay.open { display:block; }
+      .oas-spio-window { height:100%; display:flex; flex-direction:column; overflow:hidden; border:1px solid rgba(100,216,255,.48); border-radius:14px; background:#071725; box-shadow:0 20px 70px rgba(0,0,0,.65); }
+      .oas-spio-window header { display:flex; justify-content:space-between; align-items:center; gap:20px; padding:16px 18px; border-bottom:1px solid rgba(150,190,220,.2); }
+      .oas-spio-window h2 { margin:0 0 2px; font-size:19px; } .oas-spio-window small { display:block; color:#8fa9bc; }
+      #oas-spio-close { width:36px;height:36px;border:0;border-radius:8px;background:#173b58;color:white;font-size:26px;cursor:pointer; }
+      .oas-spio-toolbar { display:grid; grid-template-columns:minmax(180px,2fr) repeat(3,minmax(130px,1fr)) auto auto; gap:8px; padding:12px; border-bottom:1px solid rgba(150,190,220,.15); }
+      .oas-spio-toolbar input,.oas-spio-toolbar select,.oas-spio-toolbar button { min-width:0; padding:8px; border:1px solid rgba(130,180,220,.3); border-radius:7px; background:#102d44;color:#eef7ff; }
+      .oas-spio-toolbar button { cursor:pointer; } .oas-spio-summary { padding:8px 13px;color:#8eb9d3; }
+      .oas-spio-table-wrap { flex:1; overflow:auto; } .oas-spio-window table { width:100%; border-collapse:collapse; min-width:1050px; }
+      .oas-spio-window th { position:sticky;top:0;z-index:1;background:#102b40;color:#8edcff;text-align:left;padding:9px;border-bottom:1px solid #29485e; }
+      .oas-spio-window td { padding:9px;border-bottom:1px solid rgba(130,180,220,.12);vertical-align:top; } .oas-spio-window tr:hover td { background:rgba(70,130,170,.1); }
+      .oas-spio-player.status-inactive { color:#6fbd61; } .oas-spio-player.status-long_inactive { color:#4d9345; } .oas-spio-player.status-vacation { color:#5ba8e6; } .oas-spio-player.status-banned { text-decoration:line-through;color:#8d8d8d; } .oas-spio-player.status-active { color:#e7edf2; }
+      .oas-spio-empty { text-align:center;padding:40px!important;color:#8fa9bc; }
+      @media(max-width:900px){#oas-spio-overlay{padding:8px}.oas-spio-toolbar{grid-template-columns:1fr 1fr}.oas-spio-toolbar input:first-child{grid-column:1/-1}}
 
       #oas-panel.oas-collapsed {
         width: 46px; height: 46px; border-radius: 50%; overflow: visible;
@@ -3987,33 +4507,7 @@
       .oas-rc-item,.oas-rc-selected-row{display:grid;align-items:center;gap:6px;background:rgba(255,255,255,.035);border-radius:6px;padding:5px}.oas-rc-item{grid-template-columns:28px minmax(0,1fr) 82px 28px}.oas-rc-icon{width:26px;height:26px;border-radius:5px;background:#193247;display:grid;place-items:center;font-size:17px}.oas-rc-name,.oas-rc-selected-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.oas-rc-item input,.oas-rc-selected-row input{min-width:0;background:#07121b;border:1px solid #31516a;color:#fff;border-radius:5px;padding:5px}.oas-rc-item button,.oas-rc-selected-row button,.oas-rc-actions button{border:1px solid #3b6784;background:#173951;color:#e9f7ff;border-radius:5px;cursor:pointer;padding:5px}
       .oas-rc-selection{border:1px solid #29465d;border-radius:8px;padding:9px;background:#0d1d29;overflow-x:hidden}.oas-rc-selection h3{margin-bottom:7px}.oas-rc-selected-row{grid-template-columns:26px minmax(0,1fr) 62px 28px;grid-template-areas:"icon name input remove" "icon cost cost remove";margin-bottom:4px;max-width:100%;overflow:hidden}.oas-rc-selected-row>.oas-rc-icon{grid-area:icon}.oas-rc-selected-name{grid-area:name;min-width:0}.oas-rc-selected-row>input{grid-area:input;width:100%;box-sizing:border-box}.oas-rc-cost{grid-area:cost;text-align:left;color:#9fc1d7;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.oas-rc-selected-row>button{grid-area:remove;width:28px;height:100%;min-height:28px;padding:0;position:sticky;right:0}.oas-rc-empty{padding:12px;color:#7894a8;text-align:center}.oas-rc-summary-card{margin-top:10px;border:1px solid #31516a;border-radius:8px;background:#102433;padding:9px}.oas-rc-summary-card h3{margin:0 0 6px}.oas-rc-summary-card>div{display:flex;justify-content:space-between;gap:12px;padding:5px 2px;border-top:1px solid rgba(255,255,255,.07)}.oas-rc-summary-card>div:first-of-type{border-top:0}.oas-rc-summary-card strong{color:#fff}.oas-rc-actions{display:flex;gap:6px;margin-top:10px}
       @media(max-width:850px){.oas-rc-layout{grid-template-columns:1fr}.oas-rc-selection{max-height:48vh}.oas-rc-grid{grid-template-columns:1fr}}
-      .oas-header-actions {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        margin-left: auto;
-      }
-      .oas-header-icon {
-        width: 30px;
-        height: 30px;
-        padding: 0;
-        border: 1px solid rgba(105,190,235,.28);
-        border-radius: 7px;
-        background: rgba(20,55,80,.75);
-        color: #dff4ff;
-        cursor: pointer;
-        font-size: 17px;
-        line-height: 1;
-      }
-      .oas-header-icon:hover:not(:disabled) {
-        filter: brightness(1.18);
-      }
-      .oas-header-icon:disabled {
-        opacity: .65;
-        cursor: default;
-      }
-      #oas-panel.oas-collapsed .oas-header-title,
-      #oas-panel.oas-collapsed .oas-header-actions > :not(#oas-toggle),
+      #oas-panel.oas-collapsed .oas-header > div,
       #oas-panel.oas-collapsed .oas-content { display: none; }
     `;
     document.head.appendChild(style);
@@ -4022,17 +4516,11 @@
     panel.id = "oas-panel";
     panel.innerHTML = `
       <div class="oas-header">
-        <div class="oas-header-title">
+        <div>
           <h3>OGame Stats Companion</h3>
-          <div class="oas-version">Collector 7.16.0 · Supabase Sync</div>
+          <div class="oas-version">Collector 7.15.0 · Supabase Sync</div>
         </div>
-        <span class="oas-header-actions">
-          <button id="oas-player-snapshot" class="oas-header-icon" type="button"
-            title="Spieler-Snapshot erstellen" aria-label="Spieler-Snapshot erstellen">↻</button>
-          <button id="oas-open-dashboard-header" class="oas-header-icon" type="button"
-            title="OGame Stats öffnen" aria-label="OGame Stats öffnen">↗</button>
-          <button id="oas-toggle" type="button">−</button>
-        </span>
+        <button id="oas-toggle" type="button">−</button>
       </div>
 
       <div class="oas-content">
@@ -4121,53 +4609,68 @@
             <button id="oas-optimizer-refresh" class="oas-primary" type="button">🔄 Accountdaten aktualisieren</button>
             <button id="oas-optimizer-open" class="oas-secondary" type="button" disabled>📈 Optimizer öffnen</button>
             <div class="oas-muted" style="margin-top:8px">
-              Liest die aktuelle Imperiumsansicht ausschließlich für den Optimizer. Der Abruf dient ausschließlich dem Optimizer und wird nicht als Spieler-Snapshot gespeichert.
+              Liest die aktuelle Imperiumsansicht ausschließlich für den Optimizer. Es wird kein lokaler Tages-Snapshot angelegt und nichts an die Bridge übertragen.
             </div>
           </div>
         </details>
 
         <details class="oas-card oas-collapsible">
-          <summary>👤 Spielerdaten</summary>
+          <summary>🧰 Sonstiges</summary>
           <div class="oas-collapsible-body">
-            <div class="oas-auth-box">
-              <div class="oas-row">
-                <span>Supabase</span>
-                <strong id="oas-supabase-state" data-kind="idle">Nicht angemeldet</strong>
+            <details class="oas-collapsible oas-nested-card">
+              <summary>📊 Tages-Snapshot</summary>
+              <div class="oas-collapsible-body">
+                <div class="oas-auth-box">
+                  <div class="oas-row"><span>Supabase</span><strong id="oas-supabase-state" data-kind="idle">Nicht angemeldet</strong></div>
+                  <input id="oas-supabase-email" type="email" autocomplete="username" placeholder="E-Mail">
+                  <input id="oas-supabase-password" type="password" autocomplete="current-password" placeholder="Passwort">
+                  <button id="oas-supabase-login" class="oas-secondary" type="button">🔐 Bei Supabase anmelden</button>
+                  <button id="oas-supabase-logout" class="oas-secondary" type="button" hidden>Abmelden</button>
+                </div>
+                <div class="oas-row"><span>Status</span><strong id="oas-snapshot-state" data-kind="idle">Bereit</strong></div>
+                <div class="oas-row"><span>Letzter Lauf</span><strong id="oas-last-snapshot">Noch keiner</strong></div>
+                <div class="oas-row"><span>Nächster Lauf</span><strong id="oas-next-snapshot">–</strong></div>
+                <progress id="oas-snapshot-progress" max="100" value="0"></progress>
+                <div id="oas-snapshot-detail">Noch kein Snapshot ausgeführt.</div>
+                <button id="oas-snapshot-now" class="oas-primary" type="button">▶ Tages-Snapshot jetzt starten</button>
+                <button id="oas-open-dashboard" class="oas-secondary" type="button">🌐 Dashboard öffnen</button>
               </div>
-              <input id="oas-supabase-email" type="email" autocomplete="username" placeholder="E-Mail">
-              <input id="oas-supabase-password" type="password" autocomplete="current-password" placeholder="Passwort">
-              <button id="oas-supabase-login" class="oas-secondary" type="button">🔐 Bei Supabase anmelden</button>
-              <button id="oas-supabase-logout" class="oas-secondary" type="button" hidden>Abmelden</button>
-            </div>
-
-            <div class="oas-row"><span>Spieler</span><strong id="oas-player-name">–</strong></div>
-            <div class="oas-row"><span>Player-ID</span><strong id="oas-player-id">–</strong></div>
-            <div class="oas-row"><span>Universum</span><strong id="oas-player-universe">–</strong></div>
-            <div class="oas-row">
-              <span>Letzter Spieler-Snapshot</span>
-              <strong id="oas-player-last-snapshot">Noch keiner</strong>
-            </div>
-            <div class="oas-row">
-              <span>Snapshot-Status</span>
-              <strong id="oas-player-snapshot-state" data-kind="idle">Bereit</strong>
-            </div>
-
+            </details>
+            <details class="oas-collapsible oas-nested-card">
+              <summary>💾 Lokale Snapshots</summary>
+              <div class="oas-collapsible-body">
+                <div class="oas-row"><span>Speicherung</span><strong class="oas-status-pill">aktiv</strong></div>
+                <div id="oas-local-snapshots"></div>
+              </div>
+            </details>
             <details class="oas-collapsible oas-nested-card">
               <summary>📋 Diagnose</summary>
               <div class="oas-collapsible-body">
-                <div class="oas-muted">Nur bei Collector- oder Parser-Problemen nötig.</div>
-                <textarea id="oas-diagnostic-log" readonly
-                  placeholder="Nach einem Spieler-Snapshot erscheint hier das Diagnose-Log."></textarea>
+                <div class="oas-muted">Nur bei Fehlern oder Parser-Problemen nötig.</div>
+                <textarea id="oas-diagnostic-log" readonly placeholder="Nach einem Snapshot erscheint hier das Diagnose-Log."></textarea>
                 <button id="oas-diagnostic-copy" class="oas-secondary" type="button" disabled>📋 Log kopieren</button>
                 <button id="oas-diagnostic-clear" class="oas-secondary" type="button">🗑 Diagnose löschen</button>
               </div>
             </details>
           </div>
         </details>
+
+        <details class="oas-card oas-collapsible">
+          <summary>🛰️ Spionage-Ziele</summary>
+          <div class="oas-collapsible-body">
+            <div class="oas-row"><span>Lokale Datenbank</span><strong id="oas-spio-state">0 Ziele lokal</strong></div>
+            <button id="oas-spio-update" class="oas-primary" type="button">🔄 Berichte aktualisieren</button>
+            <button id="oas-spio-open" class="oas-secondary" type="button">🎯 Zieldatenbank öffnen</button>
+            <div class="oas-muted" style="margin-top:8px">
+              Liest geladene und verlinkte Spionageberichte. Nicht sichtbare Flotten- oder Verteidigungswerte bleiben mit ihrem letzten Zeitstempel erhalten. Alle Daten bleiben lokal im Browser.
+            </div>
+          </div>
+        </details>
+
         <section class="oas-card">
           <h4>🌌 Expeditionen</h4>
           <div class="oas-muted">
-            Vorbereitet für eine spätere eigenständige Expeditionsauswertung.
+            Vorbereitet. Nach dem stabilen Tages-Snapshot lesen wir neue Expeditionsnachrichten automatisch aus.
           </div>
         </section>
 
@@ -4194,14 +4697,15 @@
     };
 
     bindPanelEvent("#oas-toggle", "click", () => setCollapsed(!isCollapsed()));
-    bindPanelEvent("#oas-player-snapshot", "click", runPlayerSnapshotFromHeader);
-    bindPanelEvent("#oas-open-dashboard-header", "click", openDashboard);
+    bindPanelEvent("#oas-snapshot-now", "click", runCleanSnapshot);
     bindPanelEvent("#oas-supabase-login", "click", handleSupabaseLogin);
     bindPanelEvent("#oas-supabase-logout", "click", handleSupabaseLogout);
     bindPanelEvent("#oas-resource-calc-open", "click", resourceCalcOpen);
     bindPanelEvent("#oas-transport-calc-open", "click", transportCalcOpen);
     bindPanelEvent("#oas-optimizer-refresh", "click", refreshOptimizerSnapshot);
     bindPanelEvent("#oas-optimizer-open", "click", openOptimizer);
+    bindPanelEvent("#oas-spio-update", "click", spioUpdateReports);
+    bindPanelEvent("#oas-spio-open", "click", spioOpenDatabase);
     bindPanelEvent("#oas-combat-update", "click", combatUpdateReports);
     bindPanelEvent("#oas-combat-open", "click", combatOpenOverlay);
     bindPanelEvent("#oas-combat-reset", "click", combatReset);
@@ -4219,6 +4723,7 @@
       );
     });
     bindPanelEvent("#oas-transport-clear", "click", transportNoteClear);
+    bindPanelEvent("#oas-open-dashboard", "click", openDashboard);
     bindPanelEvent("#oas-diagnostic-copy", "click", copyCleanDiagnosticLog);
     updateSupabaseAuthUi();
     bindPanelEvent("#oas-diagnostic-clear", "click", () => {
@@ -4232,6 +4737,7 @@
     };
     safePanelInit("Statusanzeige", updateCleanCompanionUi);
     safePanelInit("Optimizer-Anzeige", updateOptimizerUi);
+    safePanelInit("Spionage-Anzeige", spioRenderTable);
     safePanelInit("Kampfbericht-Anzeige", combatRender);
     safePanelInit("Transport-Notiz", transportNoteRender);
     if (loadSupabaseSession()?.access_token) {
@@ -4294,7 +4800,11 @@
     } catch (error) {
       console.error("[OGame Companion] DOM-Beobachter fehlgeschlagen", error);
     }
-}
+    window.setTimeout(() => {
+      try { runDailySnapshotAutomatically(); }
+      catch (error) { console.error("[OGame Companion] Automatischer Snapshot fehlgeschlagen", error); }
+    }, AUTO_SNAPSHOT_DELAY_MS);
+  }
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", startCompanion, { once: true });
