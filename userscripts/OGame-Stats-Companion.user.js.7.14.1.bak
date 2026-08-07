@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         OGame Stats Companion
 // @namespace    https://github.com/XellDincht/ogame-stats
-// @version      7.15.0
-// @description  Empire-Collector mit Supabase-Sync für Account, Kampfberichte und Transport-Notiz.
+// @version      7.14.1
+// @description  Empire-Collector mit Mondfeldern, Supabase-Upload und geräteübergreifendem Kampfberichte-Loot.
 // @match        https://s282-de.ogame.gameforge.com/game/index.php*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setClipboard
@@ -760,9 +760,6 @@
       const field = document.querySelector("#oas-supabase-password");
       if (field) field.value = "";
       updateSupabaseAuthUi();
-      transportNoteLoadRemote().catch(error =>
-        console.warn("[OGame Companion] Transport-Info konnte nach Login nicht geladen werden", error)
-      );
       showCollectorSnackbar("Supabase-Anmeldung erfolgreich.", "success");
     } catch (error) {
       updateSupabaseAuthUi(`Anmeldung fehlgeschlagen: ${error.message}`, "error");
@@ -3320,31 +3317,26 @@
   }
 
 
-  const TRANSPORT_NOTE_STORAGE_KEY = "ogameCompanionTransportNoteDraftV2";
-  let transportRemoteSnapshot = null;
-  let transportRemoteLoading = false;
+  const TRANSPORT_NOTE_STORAGE_KEY = "ogameCompanionTransportNoteV1";
 
   function transportNoteLoad() {
     try {
       const value = JSON.parse(sessionStorage.getItem(TRANSPORT_NOTE_STORAGE_KEY) || "null");
-      if (!value || typeof value !== "object") return { items: [] };
-      return { ...value, items: Array.isArray(value.items) ? value.items : [] };
+      return value && typeof value === "object" ? value : null;
     } catch (_) {
-      return { items: [] };
+      return null;
     }
   }
 
   function transportNoteSave(note) {
-    sessionStorage.setItem(TRANSPORT_NOTE_STORAGE_KEY, JSON.stringify(note || { items: [] }));
-  }
-
-  function transportNoteClearDraft() {
-    sessionStorage.removeItem(TRANSPORT_NOTE_STORAGE_KEY);
+    sessionStorage.setItem(TRANSPORT_NOTE_STORAGE_KEY, JSON.stringify(note));
   }
 
   function transportNoteNumber(value, preserveSign = false) {
     if (value === null || value === undefined) return null;
-    const match = String(value).replace(/\u00a0/g, " ").match(/[-+]?\d[\d.,]*/);
+    const match = String(value)
+      .replace(/\u00a0/g, " ")
+      .match(/[-+]?\d[\d.,]*/);
     if (!match) return null;
     const normalized = match[0]
       .replace(/[.,](?=\d{3}(?:[.,]|\D|$))/g, "")
@@ -3367,6 +3359,7 @@
   function transportNoteMissingList() {
     const resourceBox = document.querySelector("#ago_items_resource");
     if (!resourceBox) return null;
+
     return Array.from(resourceBox.children).find(child => {
       if (child.tagName !== "UL" || child.classList.contains("ago_items_resource_cargo")) return false;
       const firstRow = child.querySelector(":scope > li:first-child");
@@ -3382,6 +3375,9 @@
     );
     const valueNode = row?.querySelector(":scope > .ago_items_resource_value");
     const value = valueNode ? transportNoteNumber(valueNode.textContent, true) : null;
+
+    // In der AGO-Liste bedeutet ausschließlich ein negativer Wert eine Fehlmenge.
+    // Positive Bestände und leere Felder werden nicht in die Transport-Notiz übernommen.
     return value !== null && value < 0 ? Math.abs(value) : 0;
   }
 
@@ -3389,6 +3385,7 @@
     const resourceBox = document.querySelector("#ago_items_resource");
     const cargoList = resourceBox?.querySelector(":scope > ul.ago_items_resource_cargo");
     if (!cargoList) return 0;
+
     const row = Array.from(cargoList.querySelectorAll(":scope > li")).find(item => {
       const text = transportNoteOwnText(item).toLocaleLowerCase("de-DE");
       return text === "großer transporter" || text === "grosser transporter";
@@ -3400,6 +3397,7 @@
   function transportNoteCurrentTargetName() {
     const metaName = metaFromDocument(document, "ogame-planet-name");
     if (metaName) return String(metaName).trim();
+
     const selected = document.querySelector(
       "#planetList .smallplanet.hightlight .planet-name, " +
       "#planetList .smallplanet.highlight .planet-name, " +
@@ -3412,6 +3410,7 @@
   function transportNoteTargetObject() {
     const details = document.querySelector("#technologydetails");
     if (!details) return "";
+
     const name = String(
       details.querySelector(":scope > .content h3, .content > h3")?.textContent ||
       details.querySelector("[data-name]")?.getAttribute("data-name") ||
@@ -3419,13 +3418,18 @@
     ).replace(/\s+/g, " ").trim();
     if (!name) return "";
 
-    const costsText = String(details.querySelector(".content .costs p")?.textContent || "")
-      .replace(/\s+/g, " ").trim();
-    const targetLevelMatch =
-      costsText.match(/(?:Ausbau|Forschung)\s+auf\s+Stufe\s+(\d+)/i) ||
+    // Gebäude und Forschungen: die fehlenden Ressourcen beziehen sich auf die
+    // nächste Zielstufe, nicht auf die aktuell angezeigte Stufe.
+    const costsText = String(
+      details.querySelector(".content .costs p")?.textContent || ""
+    ).replace(/\s+/g, " ").trim();
+    const targetLevelMatch = costsText.match(/(?:Ausbau|Forschung)\s+auf\s+Stufe\s+(\d+)/i) ||
       costsText.match(/Stufe\s+(\d+)/i);
 
     let targetLevel = targetLevelMatch ? Number(targetLevelMatch[1]) : null;
+
+    // AGO-Fallback: current/start/stop enthalten bei der Konstruktion die
+    // ausgewählte Zielstufe.
     if (!Number.isFinite(targetLevel)) {
       const agoNode = details.querySelector("#ago_items_resource .ago_items_resource_header [ago-data*='Construction']");
       const raw = agoNode?.getAttribute("ago-data") || "";
@@ -3438,358 +3442,134 @@
         } catch (_) {}
       }
     }
-    if (Number.isFinite(targetLevel) && targetLevel > 0) return `${name} ${targetLevel}`;
 
-    const quantityNode = details.querySelector("input[name='amount'], input[name='number'], input.amount, input[type='number']");
+    if (Number.isFinite(targetLevel) && targetLevel > 0) {
+      return `${name} ${targetLevel}`;
+    }
+
+    // Schiffe und Verteidigung: Menge möglichst aus einem sichtbaren
+    // Eingabefeld oder der Kostenbeschreibung übernehmen.
+    const quantityNode = details.querySelector(
+      "input[name='amount'], input[name='number'], input.amount, input[type='number']"
+    );
     const quantity = transportNoteNumber(quantityNode?.value, false);
     if (quantity && quantity > 0) return `${name} × ${transportNoteFormat(quantity)}`;
+
     return name;
   }
 
-  function transportNoteReadCurrentItem() {
+  function transportNoteReadCurrentPage() {
     const missingList = transportNoteMissingList();
-    if (!missingList) throw new Error("Die AGO-Liste „Fehlend“ wurde auf der aktuellen Seite nicht gefunden.");
+    if (!missingList) {
+      throw new Error("Die AGO-Liste ‚Fehlend‘ wurde auf der aktuellen Seite nicht gefunden.");
+    }
 
-    const gt = transportNoteAgoLargeCargo();
-    const item = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    const previous = transportNoteLoad();
+    const metal = transportNoteMissingValue(missingList, "Metall");
+    const crystal = transportNoteMissingValue(missingList, "Kristall");
+    const deuterium = transportNoteMissingValue(missingList, "Deuterium");
+    const largeCargo = transportNoteAgoLargeCargo();
+
+    const note = {
+      metal,
+      crystal,
+      deuterium,
+      largeCargo,
+      smallCargo: largeCargo * 5,
       targetName: transportNoteCurrentTargetName(),
       targetObject: transportNoteTargetObject(),
-      metal: transportNoteMissingValue(missingList, "Metall"),
-      crystal: transportNoteMissingValue(missingList, "Kristall"),
-      deuterium: transportNoteMissingValue(missingList, "Deuterium"),
-      largeCargo: gt,
-      smallCargo: gt * 5,
-      done: false,
+      customText: previous?.customText || "",
       capturedAt: new Date().toISOString()
     };
-
-    if (!item.metal && !item.crystal && !item.deuterium) {
-      throw new Error("Für den ausgewählten Ausbau wurden keine negativen AGO-Fehlmengen gefunden.");
-    }
-    return item;
+    transportNoteSave(note);
+    transportNoteRender();
+    showMessage("Nur die negativen AGO-Fehlmengen wurden übernommen.", "success");
   }
 
-  function transportNoteAggregate(items) {
-    return (items || []).reduce((sum, item) => {
-      sum.metal += Number(item.metal) || 0;
-      sum.crystal += Number(item.crystal) || 0;
-      sum.deuterium += Number(item.deuterium) || 0;
-      return sum;
-    }, { metal: 0, crystal: 0, deuterium: 0 });
-  }
-
-  function transportNoteCargoForTotal(total) {
-    // Für Planet-Hopping bleibt die Transporterzahl immer auf dem kompletten Plan.
-    // Die Anzahl wird aus der SUMME aller Ressourcen mit den im Transportrechner
-    // gespeicherten aktuellen Laderaumwerten berechnet.
-    const capacities = transportCapacityLoad();
-    const totalResources = (Number(total?.metal) || 0) + (Number(total?.crystal) || 0) + (Number(total?.deuterium) || 0);
-    const gtCapacity = Math.max(1, Number(capacities?.gt?.value || capacities?.gt || 25000));
-    const ktCapacity = Math.max(1, Number(capacities?.kt?.value || capacities?.kt || 5000));
-    return {
-      largeCargo: Math.ceil(totalResources / gtCapacity),
-      smallCargo: Math.ceil(totalResources / ktCapacity)
+  function transportNoteCustomTextChanged(event) {
+    const note = transportNoteLoad() || {
+      metal: 0,
+      crystal: 0,
+      deuterium: 0,
+      largeCargo: 0,
+      smallCargo: 0,
+      targetName: "",
+      targetObject: "",
+      capturedAt: new Date().toISOString()
     };
-  }
-
-  function transportNoteReadCurrentPage() {
-    if (transportRemoteSnapshot) {
-      showMessage("Es gibt bereits eine gespeicherte Transport-Info. Bitte diese zuerst löschen.", "info");
-      return;
-    }
-    const draft = transportNoteLoad();
-    if (draft.items.length) {
-      showMessage("Der erste Ausbau ist bereits übernommen. Weitere Ausbauten bitte mit [+] hinzufügen.", "info");
-      return;
-    }
-    draft.items = [transportNoteReadCurrentItem()];
-    transportNoteSave(draft);
-    transportNoteRender();
-    showMessage("Erster Ausbau übernommen. Weitere Ausbauten mit [+] hinzufügen.", "success");
-  }
-
-  function transportNoteAddCurrentPage() {
-    if (transportRemoteSnapshot) {
-      showMessage("Es gibt bereits eine gespeicherte Transport-Info. Bitte diese zuerst löschen.", "info");
-      return;
-    }
-    const draft = transportNoteLoad();
-    if (!draft.items.length) {
-      showMessage("Bitte zuerst „Fehlende Ressourcen übernehmen“ verwenden.", "info");
-      return;
-    }
-    const item = transportNoteReadCurrentItem();
-    draft.items.push(item);
-    transportNoteSave(draft);
-    transportNoteRender();
-    showMessage(`${item.targetName} | ${item.targetObject || "Ausbau"} hinzugefügt.`, "success");
+    note.customText = String(event?.target?.value || "");
+    transportNoteSave(note);
+    transportNoteRender(false);
   }
 
   function transportNoteFormat(value) {
     return Number(value || 0).toLocaleString("de-DE");
   }
 
-  function transportNoteEscape(value) {
-    return String(value ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
-
-  function transportNotePlayerId() {
-    return String(combatOwnIdentity()?.id || "");
-  }
-
-  async function transportNoteLoadRemote() {
-    if (transportRemoteLoading || !loadSupabaseSession()?.access_token) return transportRemoteSnapshot;
-    transportRemoteLoading = true;
+  function transportNoteCopy() {
+    const note = transportNoteLoad();
+    if (!note) {
+      showMessage("Noch keine Transport-Notiz vorhanden.", "info");
+      return;
+    }
+    const total = Number(note.metal || 0) + Number(note.crystal || 0) + Number(note.deuterium || 0);
+    const text = [
+      "Transport-Notiz",
+      `Ziel: ${String(note.targetName || "Unbekannt")}${note.targetObject ? ` | ${note.targetObject}` : ""}`,
+      `Metall: ${transportNoteFormat(note.metal)}`,
+      `Kristall: ${transportNoteFormat(note.crystal)}`,
+      `Deuterium: ${transportNoteFormat(note.deuterium)}`,
+      `Gesamt: ${transportNoteFormat(total)}`,
+      `GT: ${transportNoteFormat(note.largeCargo)}`,
+      `KT: ${transportNoteFormat(note.smallCargo)}`,
+      ...(String(note.customText || "").trim() ? ["", String(note.customText).trim()] : [])
+    ].join("\n");
     try {
-      const session = await getValidSupabaseSession();
-      const playerId = transportNotePlayerId();
-      if (!playerId) throw new Error("OGame-Spieler-ID konnte nicht ermittelt werden.");
-
-      const result = await supabaseRequest(
-        "GET",
-        `${SUPABASE_URL}/rest/v1/ogame_transport_note?select=*&ogame_player_id=eq.${encodeURIComponent(playerId)}&limit=1`,
-        null,
-        session.access_token
-      );
-      transportRemoteSnapshot =
-        Array.isArray(result.body) && result.body.length ? result.body[0] : null;
-      transportNoteRender();
-      return transportRemoteSnapshot;
-    } finally {
-      transportRemoteLoading = false;
+      GM_setClipboard(text, "text");
+    } catch (_) {
+      navigator.clipboard?.writeText(text);
     }
-  }
-
-  async function transportNoteSaveSnapshot() {
-    if (transportRemoteSnapshot) {
-      showMessage("Es ist bereits eine Transport-Info gespeichert. Bitte diese zuerst löschen.", "info");
-      return;
-    }
-
-    const draft = transportNoteLoad();
-    if (!draft.items.length) {
-      showMessage("Noch keine Ausbauten für die Transport-Notiz übernommen.", "info");
-      return;
-    }
-
-    const session = await getValidSupabaseSession();
-    const playerId = transportNotePlayerId();
-    const ownerId = combatSupabaseUserId(session);
-    if (!playerId || !ownerId) throw new Error("Benutzer- oder OGame-Spieler-ID fehlt.");
-
-    const total = transportNoteAggregate(draft.items);
-    const cargo = transportNoteCargoForTotal(total);
-
-    const row = {
-      owner_id: ownerId,
-      ogame_player_id: playerId,
-      items: draft.items,
-      total_metal: total.metal,
-      total_crystal: total.crystal,
-      total_deuterium: total.deuterium,
-      large_cargo: cargo.largeCargo,
-      small_cargo: cargo.smallCargo
-    };
-
-    const result = await supabaseRequest(
-      "POST",
-      `${SUPABASE_URL}/rest/v1/ogame_transport_note`,
-      row,
-      session.access_token,
-      30000,
-      { Prefer: "return=representation" }
-    );
-
-    transportRemoteSnapshot = Array.isArray(result.body) ? result.body[0] : null;
-    if (!transportRemoteSnapshot) await transportNoteLoadRemote();
-
-    transportNoteClearDraft();
-    transportNoteRender();
-    showMessage("Transport-Info in Supabase gespeichert.", "success");
-  }
-
-  async function transportNoteToggleItem(itemId, checked) {
-    if (!transportRemoteSnapshot) return;
-
-    const session = await getValidSupabaseSession();
-    const playerId = transportNotePlayerId();
-    const items = (Array.isArray(transportRemoteSnapshot.items) ? transportRemoteSnapshot.items : [])
-      .map(item =>
-        String(item.id) === String(itemId)
-          ? { ...item, done: Boolean(checked) }
-          : item
-      );
-
-    const result = await supabaseRequest(
-      "PATCH",
-      `${SUPABASE_URL}/rest/v1/ogame_transport_note?ogame_player_id=eq.${encodeURIComponent(playerId)}`,
-      { items, updated_at: new Date().toISOString() },
-      session.access_token,
-      30000,
-      { Prefer: "return=representation" }
-    );
-
-    transportRemoteSnapshot =
-      Array.isArray(result.body) && result.body.length
-        ? result.body[0]
-        : { ...transportRemoteSnapshot, items };
-    transportNoteRender();
-  }
-
-  async function transportNoteDeleteSnapshot() {
-    if (!transportRemoteSnapshot) {
-      showMessage("Keine gespeicherte Transport-Info vorhanden.", "info");
-      return;
-    }
-
-    const session = await getValidSupabaseSession();
-    const playerId = transportNotePlayerId();
-
-    await supabaseRequest(
-      "DELETE",
-      `${SUPABASE_URL}/rest/v1/ogame_transport_note?ogame_player_id=eq.${encodeURIComponent(playerId)}`,
-      null,
-      session.access_token
-    );
-
-    transportRemoteSnapshot = null;
-    transportNoteClearDraft();
-    transportNoteRender();
-    showMessage("Gespeicherte Transport-Info gelöscht. Eine neue kann jetzt erstellt werden.", "success");
+    showMessage("Transport-Notiz kopiert.", "success");
   }
 
   function transportNoteClear() {
-    if (transportRemoteSnapshot) {
-      showMessage("Die gespeicherte Transport-Info bitte mit dem Löschbutton darunter entfernen.", "info");
-      return;
-    }
-    transportNoteClearDraft();
+    sessionStorage.removeItem(TRANSPORT_NOTE_STORAGE_KEY);
     transportNoteRender();
-    showMessage("Transport-Entwurf gelöscht.", "success");
+    showMessage("Transport-Notiz gelöscht.", "success");
   }
 
-  function transportNoteSavedHtml() {
-    const root = document.querySelector("#oas-transport-saved");
-    if (!root) return;
-
-    if (!transportRemoteSnapshot) {
-      root.innerHTML = `<div class="oas-muted">Keine gespeicherte Transport-Info.</div>`;
-      return;
-    }
-
-    const items = Array.isArray(transportRemoteSnapshot.items) ? transportRemoteSnapshot.items : [];
-    const openItems = items.filter(item => !item.done);
-    const open = transportNoteAggregate(openItems);
-
-    const rows = items.map(item => `
-      <label class="oas-transport-saved-item ${item.done ? "done" : ""}">
-        <input type="checkbox" class="oas-transport-done"
-          data-id="${transportNoteEscape(item.id)}" ${item.done ? "checked" : ""}>
-        <span>
-          <strong>${transportNoteEscape(item.targetName || "Unbekannt")} | ${transportNoteEscape(item.targetObject || "Ausbau")}</strong>
-          <small>Met ${transportNoteFormat(item.metal)} · Kris ${transportNoteFormat(item.crystal)} · Deut ${transportNoteFormat(item.deuterium)}</small>
-        </span>
-      </label>
-    `).join("");
-
-    root.innerHTML = `
-      <div class="oas-transport-saved-list">
-        ${rows || `<div class="oas-muted">Keine Positionen.</div>`}
-      </div>
-
-      <div class="oas-transport-open-title">Noch zu schicken</div>
-      <div class="oas-transport-grid oas-transport-open-grid">
-        <span>Metall</span><strong>${transportNoteFormat(open.metal)}</strong>
-        <span>Kristall</span><strong>${transportNoteFormat(open.crystal)}</strong>
-        <span>Deuterium</span><strong>${transportNoteFormat(open.deuterium)}</strong>
-      </div>
-
-      <div class="oas-transport-saved-cargo">
-        <strong>GT ${transportNoteFormat(transportRemoteSnapshot.large_cargo)}</strong>
-        <span>|</span>
-        <strong>KT ${transportNoteFormat(transportRemoteSnapshot.small_cargo)}</strong>
-      </div>
-
-      <button id="oas-transport-delete-snapshot" class="oas-secondary" type="button">
-        🗑️ Gespeicherte Info löschen
-      </button>
-    `;
-
-    root.querySelectorAll(".oas-transport-done").forEach(input => {
-      input.addEventListener("change", event => {
-        const id = event.currentTarget.dataset.id;
-        transportNoteToggleItem(id, event.currentTarget.checked).catch(error => {
-          event.currentTarget.checked = !event.currentTarget.checked;
-          showMessage(`Status konnte nicht gespeichert werden: ${error.message}`, "error");
-        });
-      });
-    });
-
-    root.querySelector("#oas-transport-delete-snapshot")?.addEventListener("click", () => {
-      transportNoteDeleteSnapshot().catch(error =>
-        showMessage(`Transport-Info konnte nicht gelöscht werden: ${error.message}`, "error")
-      );
-    });
-  }
-
-  function transportNoteRender() {
-    const draft = transportNoteLoad();
-    const values = transportNoteAggregate(draft.items);
-    const cargo = transportNoteCargoForTotal(values);
+  function transportNoteRender(updateTextarea = true) {
+    const note = transportNoteLoad();
+    const values = {
+      metal: note?.metal || 0,
+      crystal: note?.crystal || 0,
+      deuterium: note?.deuterium || 0,
+      largeCargo: note?.largeCargo || 0,
+      smallCargo: note?.smallCargo || 0
+    };
     const total = values.metal + values.crystal + values.deuterium;
-
     const mapping = {
       "#oas-transport-metal": values.metal,
       "#oas-transport-crystal": values.crystal,
       "#oas-transport-deuterium": values.deuterium,
       "#oas-transport-total": total,
-      "#oas-transport-gt": cargo.largeCargo,
-      "#oas-transport-kt": cargo.smallCargo
+      "#oas-transport-gt": values.largeCargo,
+      "#oas-transport-kt": values.smallCargo
     };
     for (const [selector, value] of Object.entries(mapping)) {
       const node = document.querySelector(selector);
       if (node) node.textContent = transportNoteFormat(value);
     }
-
-    const draftList = document.querySelector("#oas-transport-draft-list");
-    if (draftList) {
-      draftList.innerHTML = draft.items.length
-        ? draft.items.map((item, index) => `
-            <div class="oas-transport-draft-item">
-              <span>${index + 1}. ${transportNoteEscape(item.targetName)} | ${transportNoteEscape(item.targetObject || "Ausbau")}</span>
-              <small>Met ${transportNoteFormat(item.metal)} · Kris ${transportNoteFormat(item.crystal)} · Deut ${transportNoteFormat(item.deuterium)}</small>
-            </div>
-          `).join("")
-        : `<div class="oas-muted">Noch keine Ausbauten übernommen.</div>`;
+    const customText = document.querySelector("#oas-transport-custom-text");
+    if (customText && updateTextarea && customText.value !== String(note?.customText || "")) {
+      customText.value = String(note?.customText || "");
     }
-
-    const locked = Boolean(transportRemoteSnapshot);
-    const hasDraft = draft.items.length > 0;
-
-    const read = document.querySelector("#oas-transport-read");
-    const add = document.querySelector("#oas-transport-add");
-    const save = document.querySelector("#oas-transport-save");
-
-    if (read) read.disabled = locked || hasDraft;
-    if (add) add.disabled = locked || !hasDraft;
-    if (save) save.disabled = locked || !hasDraft;
-
-    const status = document.querySelector("#oas-transport-status");
-    if (status) {
-      status.textContent = locked
-        ? "Eine gespeicherte Transport-Info ist aktiv. Für eine neue bitte zuerst löschen."
-        : hasDraft
-          ? `${draft.items.length} Ausbau${draft.items.length === 1 ? "" : "ten"} im Entwurf.`
-          : "Bereit für eine neue Transport-Notiz.";
+    const target = document.querySelector("#oas-transport-target");
+    if (target) {
+      target.textContent = note
+        ? `${note.targetName || "Unbekannt"}${note.targetObject ? ` | ${note.targetObject}` : ""}`
+        : "Noch nicht übernommen";
     }
-
-    transportNoteSavedHtml();
   }
 
 
@@ -4469,23 +4249,18 @@
         padding-top: 6px;
         border-top: 1px solid rgba(140,190,220,.16);
       }
-
-      .oas-transport-add-row { display:flex; justify-content:flex-end; margin:7px 0 0; }
-      .oas-transport-add { width:34px; height:30px; min-width:34px; padding:0!important; font-size:21px; line-height:1; font-weight:700; }
-      .oas-transport-draft-item { display:flex; flex-direction:column; gap:2px; margin:0 0 5px; padding:7px 8px; border:1px solid rgba(140,190,220,.14); border-radius:7px; background:rgba(0,0,0,.16); }
-      .oas-transport-draft-item span { color:#dcecff; font-size:11px; }
-      .oas-transport-draft-item small { color:#8faabd; font-size:10px; }
-      .oas-transport-snapshot-title, .oas-transport-open-title { margin:12px 0 6px; padding-top:9px; border-top:1px solid rgba(140,190,220,.16); color:#8edcff; font-size:11px; font-weight:700; }
-      .oas-transport-saved-list { display:flex; flex-direction:column; gap:5px; }
-      .oas-transport-saved-item { display:flex; align-items:flex-start; gap:7px; padding:7px 8px; border:1px solid rgba(140,190,220,.14); border-radius:7px; background:rgba(0,0,0,.18); cursor:pointer; }
-      .oas-transport-saved-item input { margin-top:2px; }
-      .oas-transport-saved-item span { display:flex; flex-direction:column; gap:2px; min-width:0; }
-      .oas-transport-saved-item strong { color:#dcecff; font-size:11px; font-weight:600; }
-      .oas-transport-saved-item small { color:#8faabd; font-size:10px; }
-      .oas-transport-saved-item.done { opacity:.55; }
-      .oas-transport-saved-item.done strong, .oas-transport-saved-item.done small { text-decoration:line-through; }
-      .oas-transport-open-grid { margin-top:4px; }
-      .oas-transport-saved-cargo { display:flex; justify-content:flex-end; gap:7px; margin:8px 0; padding-top:8px; border-top:1px solid rgba(140,190,220,.16); color:#eef7ff; font-size:11px; }
+      #oas-transport-custom-text {
+        width: 100%;
+        min-height: 72px;
+        margin: 8px 0 2px;
+        padding: 8px;
+        resize: vertical;
+        border: 1px solid rgba(150,190,220,.24);
+        border-radius: 8px;
+        background: rgba(0,0,0,.25);
+        color: #dcecff;
+        font: 12px/1.4 Arial, sans-serif;
+      }
 
 
       .oas-tc-overlay{position:fixed;inset:0;z-index:2147483646;background:rgba(2,8,14,.82);display:flex;align-items:center;justify-content:center;padding:18px}
@@ -4518,7 +4293,7 @@
       <div class="oas-header">
         <div>
           <h3>OGame Stats Companion</h3>
-          <div class="oas-version">Collector 7.15.0 · Supabase Sync</div>
+          <div class="oas-version">Collector 7.11.0 · Supabase Account-Upload</div>
         </div>
         <button id="oas-toggle" type="button">−</button>
       </div>
@@ -4541,48 +4316,26 @@
         <details class="oas-card oas-collapsible">
           <summary>🚚 Transport-Notiz</summary>
           <div class="oas-collapsible-body">
-            <div id="oas-transport-status" class="oas-muted" style="margin-bottom:8px">
-              Bereit für eine neue Transport-Notiz.
-            </div>
-
-            <div id="oas-transport-draft-list"></div>
-
-            <button id="oas-transport-read" class="oas-primary" type="button">
-              📥 Fehlende Ressourcen übernehmen
-            </button>
-
-            <div class="oas-transport-add-row">
-              <button id="oas-transport-add" class="oas-secondary oas-transport-add" type="button"
-                title="Aktuellen Ausbau zusätzlich übernehmen">＋</button>
-            </div>
-
+            <div class="oas-row"><span>Ziel</span><strong id="oas-transport-target">Noch nicht übernommen</strong></div>
             <div class="oas-transport-grid">
               <span>Metall</span><strong id="oas-transport-metal">0</strong>
               <span>Kristall</span><strong id="oas-transport-crystal">0</strong>
               <span>Deuterium</span><strong id="oas-transport-deuterium">0</strong>
-              <span class="oas-transport-total">Gesamt</span>
-              <strong id="oas-transport-total" class="oas-transport-total">0</strong>
+              <span class="oas-transport-total">Gesamt</span><strong id="oas-transport-total" class="oas-transport-total">0</strong>
               <span>Große Transporter (GT)</span><strong id="oas-transport-gt">0</strong>
               <span>Kleine Transporter (KT = GT × 5)</span><strong id="oas-transport-kt">0</strong>
             </div>
-
-            <button id="oas-transport-save" class="oas-primary" type="button">
-              💾 Transport-Info speichern
-            </button>
-            <button id="oas-transport-clear" class="oas-secondary" type="button">
-              🗑️ Entwurf löschen
-            </button>
-
-            <div class="oas-transport-snapshot-title">Gespeicherte Transport-Info</div>
-            <div id="oas-transport-saved"></div>
-
+            <textarea id="oas-transport-custom-text" placeholder="Eigene Notiz, z. B. Zielkoordinaten oder Bauvorhaben …"></textarea>
+            <button id="oas-transport-read" class="oas-primary" type="button">📥 Fehlende Ressourcen übernehmen</button>
+            <button id="oas-transport-copy" class="oas-secondary" type="button">📋 Notiz kopieren</button>
+            <button id="oas-transport-clear" class="oas-secondary" type="button">🗑️ Notiz löschen</button>
             <div class="oas-muted" style="margin-top:8px">
-              Der erste Ausbau wird übernommen, weitere mit [+] ergänzt. Beim Speichern entsteht genau
-              ein Supabase-Snapshot. Häkchen reduzieren nur „Noch zu schicken“; GT/KT bleiben für den
-              vollständigen Planet-Hopping-Plan unverändert.
+              Liest die auf der aktuellen OGame-Seite angezeigten Fehlmengen und die benötigten Großen Transporter. Die Anzahl Kleiner Transporter wird immer als GT × 5 berechnet. Speicherung nur bis zum Schließen des Tabs.
             </div>
           </div>
         </details>
+
+
         <details class="oas-card oas-collapsible">
           <summary>🧮 Ressourcenrechner</summary>
           <div class="oas-collapsible-body">
@@ -4709,20 +4462,10 @@
     bindPanelEvent("#oas-combat-update", "click", combatUpdateReports);
     bindPanelEvent("#oas-combat-open", "click", combatOpenOverlay);
     bindPanelEvent("#oas-combat-reset", "click", combatReset);
-    bindPanelEvent("#oas-transport-read", "click", () => {
-      try { transportNoteReadCurrentPage(); }
-      catch (error) { showMessage(`Übernahme fehlgeschlagen: ${error.message}`, "error"); }
-    });
-    bindPanelEvent("#oas-transport-add", "click", () => {
-      try { transportNoteAddCurrentPage(); }
-      catch (error) { showMessage(`Hinzufügen fehlgeschlagen: ${error.message}`, "error"); }
-    });
-    bindPanelEvent("#oas-transport-save", "click", () => {
-      transportNoteSaveSnapshot().catch(error =>
-        showMessage(`Speichern fehlgeschlagen: ${error.message}`, "error")
-      );
-    });
+    bindPanelEvent("#oas-transport-read", "click", transportNoteReadCurrentPage);
+    bindPanelEvent("#oas-transport-copy", "click", transportNoteCopy);
     bindPanelEvent("#oas-transport-clear", "click", transportNoteClear);
+    bindPanelEvent("#oas-transport-custom-text", "input", transportNoteCustomTextChanged);
     bindPanelEvent("#oas-open-dashboard", "click", openDashboard);
     bindPanelEvent("#oas-diagnostic-copy", "click", copyCleanDiagnosticLog);
     updateSupabaseAuthUi();
@@ -4740,11 +4483,6 @@
     safePanelInit("Spionage-Anzeige", spioRenderTable);
     safePanelInit("Kampfbericht-Anzeige", combatRender);
     safePanelInit("Transport-Notiz", transportNoteRender);
-    if (loadSupabaseSession()?.access_token) {
-      transportNoteLoadRemote().catch(error =>
-        console.warn("[OGame Companion] Transport-Info konnte nicht geladen werden", error)
-      );
-    }
     safePanelInit("Panelzustand", applyCollapsedState);
     document.querySelector("#oas-emergency-launcher")?.remove();
   }
