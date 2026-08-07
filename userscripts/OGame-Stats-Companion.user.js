@@ -9,6 +9,8 @@
 // @grant        unsafeWindow
 // @grant        GM_openInTab
 // @connect      qtegrndpcbuwuvxpphld.supabase.co
+// @updateURL    https://raw.githubusercontent.com/XellDincht/ogame-stats/main/userscripts/OGame-Stats-Companion.user.js
+// @downloadURL  https://raw.githubusercontent.com/XellDincht/ogame-stats/main/userscripts/OGame-Stats-Companion.user.js
 // ==/UserScript==
 
 (() => {
