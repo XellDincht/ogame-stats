@@ -6,14 +6,17 @@
   <meta name="theme-color" content="#07111f">
   <title>Mondversuch-Archiv · OGame</title>
   <link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="site-shell.css">
   <link rel="stylesheet" href="auth.css">
   <link rel="stylesheet" href="messages.css">
   <link rel="icon" type="image/svg+xml" href="assets/ogame-favicon.svg?v=874">
 </head>
 <body class="auth-protected">
   <header class="hero"><div class="hero-inner"><div><p class="eyebrow">Gemeinsamer Allianzbereich</p><h1>Mondversuch-Archiv</h1><p>OGame-Rundmails einfügen und automatisch übersichtlich archivieren.</p></div></div></header>
-<main>
+  <nav class="toolbar">
+    <div class="range-tabs"><a class="nav-link" href="index.html">Allianzstatistik</a><a class="nav-link" href="player.html">Spieler-Historie</a><a class="nav-link" href="hall-of-fame.html">Hall of Fame</a><a class="nav-link" href="account.html">Accountdaten</a></div>
+    <div class="auth-user-actions"><span id="authUserName" class="auth-user-name"></span><button class="auth-logout" data-auth-logout type="button">Abmelden</button></div>
+  </nav>
+  <main>
     <section class="panel">
       <div class="section-head"><div><h2 id="editorHeading">Mondversuch archivieren</h2><p class="muted">Die komplette OGame-Rundmail einfügen. Ein mitkopierter Screenshot wird automatisch erkannt; alternativ kann er mit Strg+V in dieses Feld eingefügt werden.</p></div></div>
       <form id="messageForm" class="message-editor">
@@ -36,7 +39,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script src="auth.js"></script>
-<script src="site-shell.js"></script>
   <script src="messages.js"></script>
 </body>
 </html>

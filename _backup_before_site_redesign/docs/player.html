@@ -7,7 +7,6 @@
     <meta name="theme-color" content="#07111f">
     <title>Spieler-Historie</title>
     <link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="site-shell.css">
   <link rel="stylesheet" href="auth.css">
   <link rel="icon" type="image/svg+xml" href="assets/ogame-favicon.svg?v=874">
 </head>
@@ -19,13 +18,12 @@
             <h1>Spieler-Historie</h1>
             <p class="muted">Alle aufgezeichneten Tageswerte seit Beginn</p>
         </div>
-    </header><section class="page-controls">
-  <div class="toolbar-actions">
-    <label for="historyPlayer" class="muted">Spieler</label>
-    <select id="historyPlayer"></select>
-  </div>
-</section>
-<main>
+    </header>
+    <nav class="toolbar">
+        <div class="range-tabs"><a class="nav-link" href="index.html">← Allianzstatistik</a><a class="nav-link" href="messages.html">Nachrichten</a><a class="nav-link" href="account.html">Imperiumsübersicht</a></div>
+        <div class="toolbar-actions"><select id="historyPlayer"></select></div>
+    <button type="button" data-auth-logout>Abmelden</button></nav>
+    <main>
         <section id="historySummary" class="summary-grid"></section>
         <section class="panel">
             <div class="section-head">
@@ -46,7 +44,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script src="auth.js"></script>
-<script src="site-shell.js"></script>
   <script src="ogame-data-source.js"></script>
   <script src="player.js?v=8.7.5"></script>
 </body>

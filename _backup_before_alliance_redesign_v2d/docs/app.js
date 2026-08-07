@@ -202,7 +202,7 @@ function fillPlayerControls(){activePlayers().forEach(p=>{$("#playerFilter").ins
 async function loadDashboard(){
   try{
     D=await window.ogameDataSource.load();
-    $("#title").textContent="Pro Inc Statistik";
+    $("#title").textContent=D.meta.title;
     $("#subtitle").textContent=`Server ${D.meta.server} · letzter Snapshot ${D.meta.latest_date||"–"}`;
     $("#footer").innerHTML=`<span class="footer-meta"><span>Stand ${new Date(D.meta.generated_at).toLocaleString("de-DE")}</span><span class="footer-divider"></span><span class="created-by-badge"><span>Created by</span><img src="assets/created-by-xd13.png" alt="Created by XD13"></span></span>`;
     fillPlayerControls();

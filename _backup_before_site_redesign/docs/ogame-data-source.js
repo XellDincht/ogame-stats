@@ -5,8 +5,9 @@
   const ALLIANCE_ID = 500219;
 
   function getSource() {
-  return "supabase";
-}
+    const value = localStorage.getItem(STORAGE_KEY);
+    return VALID_SOURCES.has(value) ? value : "local";
+  }
 
   function setSource(value) {
     if (!VALID_SOURCES.has(value)) throw new Error(`Unbekannte Datenquelle: ${value}`);

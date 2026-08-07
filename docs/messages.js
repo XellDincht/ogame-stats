@@ -203,34 +203,71 @@
     const admin = auth.profile?.role === "admin";
     const canChange = own || admin;
     const archiveAuthor = profileNames.get(item.author_id) || item.author_name || "Unbekannt";
-    const dateLabel = parsed.date || new Date(item.created_at).toLocaleString("de-DE");
-    const route = parsed.sourceCoords && parsed.targetCoords
-      ? `<div class="moon-route"><span>${esc(parsed.sourceCoords)}</span><b aria-hidden="true">→</b><span>${esc(parsed.targetCoords)}</span></div>`
-      : "";
+    const compactDate = parsed.date
+      ? parsed.date.replace(/^(\d{2})\.(\d{2})\.(\d{4})\s+/, "$1.$2.$3 · ")
+      : new Date(item.created_at).toLocaleString("de-DE");
+    const attemptNo = parsed.number ? `#${parsed.number}` : "—";
+    const routeText = parsed.sourceCoords && parsed.targetCoords
+      ? `${parsed.sourceCoords} → ${parsed.targetCoords}`
+      : "Route nicht erkannt";
     const resolvedParticipants = [...new Set(parsed.participants.map(resolvePlayerName).filter(Boolean))];
-    const participantBadges = resolvedParticipants.length
-      ? `<div class="moon-badges">${resolvedParticipants.map(name => `<span class="moon-badge">${esc(name)}</span>`).join("")}</div>`
-      : "";
+    const participantText = resolvedParticipants.length
+      ? resolvedParticipants.join(" · ")
+      : "Beteiligte nicht erkannt";
 
-    return `<article class="panel message-card moon-card" data-id="${esc(item.id)}">
-      <div class="moon-card-top">
-        <div>
-          <div class="moon-kicker">Mondversuch-Archiv</div>
-          <h3>${esc(parsed.title || item.title || "Mondversuch")}</h3>
+    return `<article class="moon-card moon-card-slim" data-id="${esc(item.id)}">
+      <div class="moon-slim-head">
+        <span class="moon-entry-number">${esc(attemptNo)}</span>
+
+        <div class="moon-slim-main">
+          <div class="moon-slim-title-row">
+            <strong>${esc(parsed.title || item.title || "Mondversuch")}</strong>
+            <span class="moon-slim-date">${esc(compactDate)}</span>
+          </div>
+
+          <div class="moon-slim-meta">
+            <span><b>Route:</b> ${esc(routeText)}</span>
+            <span><b>Beteiligte:</b> ${esc(participantText)}</span>
+          </div>
         </div>
-        ${canChange ? `<div class="message-actions"><button type="button" data-edit>Bearbeiten</button><button type="button" data-delete>Löschen</button></div>` : ""}
+
+        <div class="moon-slim-actions">
+          ${item.imageUrl ? `
+            <button class="moon-icon-button" type="button" data-image data-image-url="${esc(item.imageUrl)}" title="Screenshot öffnen" aria-label="Screenshot öffnen">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+                <circle cx="8.5" cy="9" r="1.5"></circle>
+                <path d="M4 17l5-5 4 4 3-3 4 4"></path>
+              </svg>
+            </button>` : ""}
+          ${canChange ? `
+            <button class="moon-icon-button" type="button" data-edit title="Bearbeiten" aria-label="Bearbeiten">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 20h4l11-11-4-4L4 16v4z"></path>
+                <path d="M13.5 6.5l4 4"></path>
+              </svg>
+            </button>
+            <button class="moon-icon-button moon-icon-danger" type="button" data-delete title="Löschen" aria-label="Löschen">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 7h16"></path>
+                <path d="M9 7V4h6v3"></path>
+                <path d="M7 7l1 13h8l1-13"></path>
+                <path d="M10 11v5M14 11v5"></path>
+              </svg>
+            </button>` : ""}
+        </div>
       </div>
-      <div class="moon-summary">
-        <div class="moon-summary-item"><span>Zeitpunkt</span><strong>${esc(dateLabel)}</strong></div>
-        ${route ? `<div class="moon-summary-item"><span>Route</span>${route}</div>` : ""}
-        ${participantBadges ? `<div class="moon-summary-item"><span>Beteiligte</span>${participantBadges}</div>` : ""}
+
+      <div class="moon-slim-info">
+        <span class="moon-slim-info-label">Info</span>
+        <p>${esc(parsed.info)}</p>
       </div>
-      <div class="moon-info"><span>Info</span><p>${esc(parsed.info)}</p></div>
-      ${item.imageUrl ? `<button class="message-screenshot-button" type="button" data-image data-image-url="${esc(item.imageUrl)}" aria-label="Screenshot öffnen" title="Screenshot öffnen"><span aria-hidden="true">▣</span><span>Screenshot</span></button>` : ""}
-      <div class="message-meta">Archiviert von <strong>${esc(archiveAuthor)}</strong> · ${new Date(item.created_at).toLocaleString("de-DE")}${item.updated_at ? " · bearbeitet" : ""}</div>
+
+      <div class="moon-slim-footer">
+        Archiviert von <strong>${esc(archiveAuthor)}</strong> · ${new Date(item.created_at).toLocaleString("de-DE")}${item.updated_at ? " · bearbeitet" : ""}
+      </div>
     </article>`;
   }
-
   async function loadMessages() {
     const list = $("#messageList");
     const { data, error } = await window.ogameSupabase
