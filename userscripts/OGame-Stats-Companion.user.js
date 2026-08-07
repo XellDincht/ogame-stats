@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         OGame Stats Companion
 // @namespace    https://github.com/XellDincht/ogame-stats
-// @version      7.13.0
-// @description  Empire-Collector mit korrekten Mondfeldern, Mondanlagen und Supabase-Upload.
+// @version      7.14.0
+// @description  Empire-Collector mit Mondfeldern, Supabase-Upload und geräteübergreifendem Kampfberichte-Loot.
 // @match        https://s282-de.ogame.gameforge.com/game/index.php*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setClipboard
@@ -643,11 +643,12 @@
     updateSupabaseAuthUi();
   }
 
-  function supabaseRequest(method, url, body = null, accessToken = null, timeout = 30000) {
+  function supabaseRequest(method, url, body = null, accessToken = null, timeout = 30000, extraHeaders = {}) {
     return new Promise((resolve, reject) => {
       const headers = {
         apikey: SUPABASE_PUBLISHABLE_KEY,
-        "Content-Type": "application/json; charset=utf-8"
+        "Content-Type": "application/json; charset=utf-8",
+        ...extraHeaders
       };
       if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
@@ -3079,12 +3080,114 @@
       .filter(node => node.querySelector(".rawMessageData"));
   }
 
+  function combatReportDay(report) {
+    const date = report?.timestamp
+      ? new Date(Number(report.timestamp) * 1000)
+      : new Date(report?.date_iso || "");
+    return Number.isNaN(date.getTime()) ? localDateKey() : localDateKey(date);
+  }
+
+  function combatSupabaseUserId(session) {
+    if (session?.user?.id) return String(session.user.id);
+    try {
+      const token = String(session?.access_token || "");
+      const payload = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+      return String(JSON.parse(atob(payload))?.sub || "");
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function combatToSupabaseRow(report, playerId, ownerId) {
+    return {
+      owner_id: ownerId,
+      ogame_player_id: String(playerId),
+      report_id: String(report.id),
+      report_day: combatReportDay(report),
+      report_timestamp: Number(report.timestamp) || null,
+      report_hash: report.hash || null,
+      coords: report.coords || null,
+      target: report.target || null,
+      role: report.role || null,
+      winner: report.winner || null,
+      loot_metal: Number(report.loot?.metal) || 0,
+      loot_crystal: Number(report.loot?.crystal) || 0,
+      loot_deuterium: Number(report.loot?.deuterium) || 0,
+      lost_resource_value: Number(report.lost_resource_value) || 0,
+      ships: report.ships || {},
+      payload: report
+    };
+  }
+
+  function combatFromSupabaseRow(row) {
+    const payload = row?.payload && typeof row.payload === "object" ? { ...row.payload } : {};
+    return {
+      ...payload,
+      id: String(row.report_id || payload.id || ""),
+      hash: row.report_hash ?? payload.hash ?? "",
+      timestamp: Number(row.report_timestamp ?? payload.timestamp) || 0,
+      date_iso: payload.date_iso || (row.report_timestamp ? new Date(Number(row.report_timestamp) * 1000).toISOString() : ""),
+      date: payload.date || "",
+      coords: row.coords ?? payload.coords ?? "",
+      target: row.target ?? payload.target ?? "",
+      role: row.role ?? payload.role ?? null,
+      winner: row.winner ?? payload.winner ?? null,
+      loot: {
+        metal: Number(row.loot_metal ?? payload.loot?.metal) || 0,
+        crystal: Number(row.loot_crystal ?? payload.loot?.crystal) || 0,
+        deuterium: Number(row.loot_deuterium ?? payload.loot?.deuterium) || 0
+      },
+      lost_resource_value: Number(row.lost_resource_value ?? payload.lost_resource_value) || 0,
+      ships: row.ships && typeof row.ships === "object" ? row.ships : (payload.ships || {}),
+      parsed_at: payload.parsed_at || row.updated_at || row.created_at || new Date().toISOString()
+    };
+  }
+
+  async function combatSupabaseSyncToday(localReports) {
+    const session = await getValidSupabaseSession();
+    const playerId = combatOwnIdentity().id;
+    const ownerId = combatSupabaseUserId(session);
+    if (!playerId) throw new Error("OGame-Spieler-ID konnte nicht ermittelt werden.");
+    if (!ownerId) throw new Error("Supabase-Benutzer-ID konnte nicht ermittelt werden.");
+
+    const todaysLocal = (localReports || []).filter(combatIsToday);
+    if (todaysLocal.length) {
+      const rows = todaysLocal.map(report => combatToSupabaseRow(report, playerId, ownerId));
+      await supabaseRequest(
+        "POST",
+        `${SUPABASE_URL}/rest/v1/ogame_combat_reports?on_conflict=owner_id%2Cogame_player_id%2Creport_id`,
+        rows,
+        session.access_token,
+        30000,
+        { Prefer: "resolution=merge-duplicates,return=minimal" }
+      );
+    }
+
+    const today = localDateKey();
+    const selectUrl =
+      `${SUPABASE_URL}/rest/v1/ogame_combat_reports` +
+      `?select=*` +
+      `&ogame_player_id=eq.${encodeURIComponent(playerId)}` +
+      `&report_day=eq.${encodeURIComponent(today)}` +
+      `&order=report_timestamp.desc`;
+
+    const result = await supabaseRequest(
+      "GET",
+      selectUrl,
+      null,
+      session.access_token,
+      30000
+    );
+
+    const remoteRows = Array.isArray(result.body) ? result.body : [];
+    return remoteRows.map(combatFromSupabaseRow).filter(report => report.id);
+  }
+
   async function combatUpdateReports() {
     const button=document.querySelector("#oas-combat-update");
     const state=document.querySelector("#oas-combat-state");
     if(button) button.disabled=true;
     if(state) state.textContent="Geladene Kampfberichte werden ausgewertet …";
-
     try {
       const messageNodes = combatCollectLoadedMessageNodes();
       if (!messageNodes.length) {
@@ -3093,8 +3196,9 @@
 
       const previous = combatLoad();
       const currentReports = {};
-      const dailyReports = combatPruneDailyReports(previous.daily_reports);
+      let dailyReports = combatPruneDailyReports(previous.daily_reports);
       let parsed=0, fresh=0, skipped=0, errors=0;
+
       for(const messageNode of messageNodes) {
         try {
           const report=combatParseMessageNode(messageNode);
@@ -3114,11 +3218,41 @@
       }
 
       combatSave({ current_reports: currentReports, daily_reports: dailyReports });
+
+      let syncText = "nur lokal";
+      const session = loadSupabaseSession();
+
+      if (session?.access_token) {
+        if(state) state.textContent="Kampfberichte werden mit Supabase synchronisiert …";
+        try {
+          const remoteToday = await combatSupabaseSyncToday(Object.values(currentReports));
+          const mergedToday = { ...dailyReports };
+
+          for (const report of remoteToday) {
+            if (report?.id) mergedToday[report.id] = report;
+          }
+
+          dailyReports = combatPruneDailyReports(mergedToday);
+          combatSave({ current_reports: currentReports, daily_reports: dailyReports });
+          syncText = `Supabase: ${Object.keys(dailyReports).length} heute`;
+        } catch (syncError) {
+          console.warn("[OGame Companion] Kampfberichte-Supabase-Sync fehlgeschlagen", syncError);
+          syncText = `Supabase fehlgeschlagen: ${syncError.message}`;
+        }
+      } else {
+        syncText = "Supabase nicht angemeldet";
+      }
+
       combatRender();
-      showMessage(`${parsed} aktuell sichtbare Kampfberichte übernommen, ${fresh} neu${skipped?`, ${skipped} andere Nachrichten ignoriert`:""}${errors?`, ${errors} fehlerhaft`:""}.`, errors?"info":"success");
+      showMessage(
+        `${parsed} aktuell sichtbare Kampfberichte übernommen, ${fresh} neu · ${syncText}` +
+        `${skipped?`, ${skipped} andere Nachrichten ignoriert`:""}` +
+        `${errors?`, ${errors} fehlerhaft`:""}.`,
+        errors ? "info" : "success"
+      );
     } catch(error) {
       console.error("[OGame Companion] Kampfberichte konnten nicht ausgewertet werden", error);
-      showMessage(`Lokale Auswertung fehlgeschlagen: ${error.message}`, "error");
+      showMessage(`Kampfbericht-Auswertung fehlgeschlagen: ${error.message}`, "error");
       if(state) state.textContent="Auswertung fehlgeschlagen";
     } finally {
       if(button) button.disabled=false;
