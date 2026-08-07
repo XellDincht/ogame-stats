@@ -240,6 +240,12 @@ body.has-site-shell main{
   margin-inline:auto;
 }
 
+#allianceChart{
+  width:100% !important;
+  max-width:1100px;
+  margin-inline:auto;
+}
+
 .alliance-page-hero{
   overflow:hidden;
   position:relative;
