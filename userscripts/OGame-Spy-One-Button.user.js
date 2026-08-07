@@ -6,6 +6,8 @@
 // @match        https://*.ogame.gameforge.com/game/index.php*
 // @grant        unsafeWindow
 // @run-at       document-idle
+// @updateURL    https://raw.githubusercontent.com/XellDincht/ogame-stats/main/userscripts/OGame-Spy-One-Button.user.js
+// @downloadURL  https://raw.githubusercontent.com/XellDincht/ogame-stats/main/userscripts/OGame-Spy-One-Button.user.js
 // ==/UserScript==
 
 (function () {
