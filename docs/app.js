@@ -30,15 +30,34 @@ function summary(){const ps=selected(),sp=[["Gesamt","total_points"],["Ökonomie
 function metricCells(p,f){return `<td>${fmt(last(p)[f])}</td><td class="${cl(diff(p,f))}">${df(diff(p,f))}</td><td class="${cl(pct(p,f))}">${pf(pct(p,f))}</td>`}
 function table(){$("#allianceBody").innerHTML=visible().map(p=>`<tr><td><a href="player.html?id=${p.id}">${p.name}</a></td>${metricCells(p,"total_points")}${metricCells(p,"economy_points")}${metricCells(p,"research_points")}${metricCells(p,"military_points")}${metricCells(p,"ships")}</tr>`).join("")}
 function cards(){
-  const allianceTotal=D.alliance?.latest?.total_points||activePlayers().reduce((sum,p)=>sum+(last(p).total_points||0),0)||1;
+  const alliance=D.alliance?.latest||{};
+  const players=activePlayers();
+
+  const allianceTotals={
+    total_points:alliance.total_points||players.reduce((sum,p)=>sum+(last(p).total_points||0),0)||1,
+    economy_points:alliance.economy_points||players.reduce((sum,p)=>sum+(last(p).economy_points||0),0)||1,
+    research_points:alliance.research_points||players.reduce((sum,p)=>sum+(last(p).research_points||0),0)||1,
+    military_points:alliance.military_points||players.reduce((sum,p)=>sum+(last(p).military_points||0),0)||1
+  };
+
+  const shareOfAlliance=(value,field)=>
+    Math.max(0,(Number(value)||0)/(allianceTotals[field]||1)*100);
+
+  const shareLabel=value=>
+    value.toLocaleString("de-DE",{maximumFractionDigits:1});
+
   $("#playerCards").innerHTML=visible().map((p,index)=>{
-    const s=last(p),total=s.total_points||0,share=Math.max(0,total/allianceTotal*100);
+    const s=last(p);
+    const total=s.total_points||0;
+    const share=shareOfAlliance(total,"total_points");
     const rank=s.total_rank!=null?`#${fmt(s.total_rank)}`:"–";
+
     const metrics=[
       ["Ökonomie","economy_points"],
       ["Forschung","research_points"],
       ["Militär","military_points"]
     ];
+
     return `<article class="player-card player-card-v2" style="--player-accent:${C[index%C.length]}">
       <div class="player-card-head">
         <div>
@@ -56,18 +75,28 @@ function cards(){
 
       <div class="player-share">
         <div class="player-share-copy">
-          <span>Anteil an Allianz</span><strong>${share.toLocaleString("de-DE",{maximumFractionDigits:1})}%</strong>
+          <span>Anteil an Allianz</span>
+          <strong>${shareLabel(share)}%</strong>
         </div>
-        <div class="player-share-track"><span style="width:${Math.min(100,share)}%"></span></div>
+        <div class="player-share-track">
+          <span style="width:${Math.min(100,share)}%"></span>
+        </div>
       </div>
 
       <div class="player-metric-grid">
-        ${metrics.map(([label,field])=>`
+        ${metrics.map(([label,field])=>{
+          const metricShare=shareOfAlliance(s[field],field);
+          return `
           <div class="player-metric">
             <span>${label}</span>
             <strong>${fmt(s[field])}</strong>
             ${changeHtml(p,field)}
-          </div>`).join("")}
+            <div class="player-metric-share">
+              <span>Anteil</span>
+              <strong>${shareLabel(metricShare)}%</strong>
+            </div>
+          </div>`;
+        }).join("")}
       </div>
 
       <div class="player-card-foot">
@@ -203,7 +232,7 @@ async function loadDashboard(){
   try{
     D=await window.ogameDataSource.load();
     $("#title").textContent="Pro Inc Statistik";
-    $("#subtitle").textContent=`Server ${D.meta.server} · letzter Snapshot ${D.meta.latest_date||"–"}`;
+    $("#subtitle").textContent=`Letzter Snapshot ${D.meta.latest_date||"–"}`;
     $("#footer").innerHTML=`<span class="footer-meta"><span>Stand ${new Date(D.meta.generated_at).toLocaleString("de-DE")}</span><span class="footer-divider"></span><span class="created-by-badge"><span>Created by</span><img src="assets/created-by-xd13.png" alt="Created by XD13"></span></span>`;
     fillPlayerControls();
     render();

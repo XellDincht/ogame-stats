@@ -284,12 +284,3 @@
     min-height:170px;
   }
 }
-
-
-/* Mondversuch-Bild muss trotz globalem body.has-site-shell > * fixed bleiben. */
-body.has-site-shell > .image-modal{
-  position:fixed !important;
-  inset:0 !important;
-  z-index:2000 !important;
-}
-

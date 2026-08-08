@@ -1266,29 +1266,3 @@ footer .footer-inner,
     height:90%;
   }
 }
-
-
-.player-metric-share{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-  margin-top:8px;
-  padding-top:7px;
-  border-top:1px solid rgba(126,181,232,.07);
-  color:#71899f;
-  font-size:.66rem;
-}
-
-.player-metric-share > span{
-  color:#71899f !important;
-  font-size:.66rem !important;
-}
-
-.player-metric-share > strong{
-  margin:0 !important;
-  color:#bfd7ea;
-  font-size:.72rem !important;
-  line-height:1;
-}
-
